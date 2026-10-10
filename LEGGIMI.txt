@@ -1,0 +1,7 @@
+Sito del corso 'Matematica, Dati e Intelligenza Artificiale' (simulazione)
+
+Apri index.html con un doppio clic (Chrome, Edge, Firefox). Non serve internet per le pagine; i notebook si aprono in Google Colab.
+
+Cartelle:
+  playground/  i playground interattivi
+  assets/      stile e motore delle esperienze guidate, comuni a tutte le pagine
