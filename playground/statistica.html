@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dati e statistica descrittiva</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+.hint{font-size:.88rem}
+.stg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:2px 16px;margin:0}
+.stg div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dotted var(--line);padding:3px 0;font-size:.95rem}
+.stg dt{color:var(--mute)}
+.stg dd{margin:0;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;text-align:right}
+.fm{font:1rem/1.75 Georgia,"Times New Roman",serif;overflow-wrap:anywhere}
+.fm p{margin:0 0 6px;max-width:none}
+.app textarea{width:100%;min-height:74px;font:inherit;font-size:.95rem;padding:7px 9px;border:1px solid var(--line);border-radius:6px;resize:vertical;color:var(--ink)}
+.app textarea:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+.pnote{font-size:.88rem;color:var(--mute);margin:6px 0 0}
+.stt{font-size:.9rem;width:100%}
+.stt th{font-size:.74rem;white-space:normal}
+.stt td,.stt th{padding:5px 8px}
+.stt td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.88rem;color:var(--mute);margin:6px 0 0}
+.lg i{display:inline-block;width:18px;height:0;border-top:3px solid;vertical-align:middle;margin-right:5px}
+.lg b.bd{display:inline-block;width:16px;height:10px;background:rgba(31,56,100,.12);border:1px solid #1F3864;vertical-align:-1px;margin-right:5px}
+.big{font-size:1.05rem}
+.app select{max-width:100%;min-width:0;flex:1 1 180px;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Dati e statistica descrittiva</h1><p>dalle misure alle feature: media, dispersione, outlier, scala</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="wrap" style="padding-top:12px"><div class="tabs" role="tablist"><button id="tbOne" class="on" role="tab">Una variabile</button><button id="tbTwo" role="tab">Due feature</button></div></div>
+
+<!-- ============ UNA VARIABILE ============ -->
+<main class="app" id="pOne">
+  <section>
+    <canvas id="cvS" width="640" height="600" style="aspect-ratio:640/600" tabindex="0" aria-label="Dall'alto in basso: istogramma, diagramma a punti e box plot dei valori. Si possono aggiungere, trascinare ed eliminare i punti."></canvas>
+    <div class="lg" id="sLeg"><span><i style="border-color:#C0611B"></i>media μ</span><span><i style="border-color:#0F6E6E;border-top-style:dashed"></i>mediana</span><span><b class="bd"></b>banda μ ± 1σ</span></div>
+    <p class="hint">Dall’alto: <b>istogramma</b>, <b>diagramma a punti</b>, <b>box plot</b>. Nel diagramma a punti: <b>clic su uno spazio vuoto</b> aggiunge un punto, <b>trascina</b> un punto per spostarlo, poi <b>Elimina</b> (o il tasto Canc) lo toglie. Con il punto scelto, le frecce ← → lo spostano di poco.</p>
+  </section>
+  <section>
+    <div class="panel" id="sData"><h2>I dati <span style="font-weight:400;text-transform:none">(dati di esempio)</span></h2>
+      <div class="row"><label for="sPre">Insieme</label>
+        <select id="sPre"></select></div>
+      <div class="row" style="align-items:stretch;flex-direction:column"><label for="sTxt">Valori (separati da spazio, a capo o “;” · decimali con la virgola)</label>
+        <textarea id="sTxt" spellcheck="false" aria-label="Elenco dei valori"></textarea></div>
+      <div class="row"><button id="sDel">Elimina il punto scelto</button><button id="sSort">Ordina</button><button id="sFit">Adatta l’asse</button></div>
+      <p class="pnote" id="sMsg" aria-live="polite"></p>
+    </div>
+    <div class="panel" id="sOpts"><h2>Come guardarli</h2>
+      <div class="row"><label for="sCls">Classi dell’istogramma</label><input type="range" id="sCls" min="2" max="20" value="6"><output id="sClsV">6</output></div>
+      <div class="row"><label><input type="checkbox" id="sCsamp"> Varianza di <b>campione</b> (divido per m − 1) invece che di popolazione (divido per m)</label></div>
+      <div class="row"><label><input type="checkbox" id="sShM" checked> Mostra media</label><label><input type="checkbox" id="sShD" checked> mediana</label><label><input type="checkbox" id="sShS" checked> banda ±1σ</label></div>
+    </div>
+    <div class="panel read" id="sStats" aria-live="polite"><h2>Le misure, in tempo reale</h2>
+      <dl class="stg">
+        <div><dt>m (quanti valori)</dt><dd id="vM"></dd></div>
+        <div><dt>media μ</dt><dd id="vMean"></dd></div>
+        <div><dt>mediana</dt><dd id="vMed"></dd></div>
+        <div><dt>moda</dt><dd id="vMode"></dd></div>
+        <div><dt>minimo</dt><dd id="vMin"></dd></div>
+        <div><dt>massimo</dt><dd id="vMax"></dd></div>
+        <div><dt>1° quartile Q1</dt><dd id="vQ1"></dd></div>
+        <div><dt>3° quartile Q3</dt><dd id="vQ3"></dd></div>
+        <div><dt>scarto interquartile</dt><dd id="vIqr"></dd></div>
+        <div><dt id="vVarN">varianza σ²</dt><dd id="vVar"></dd></div>
+        <div><dt id="vSdN">dev. standard σ</dt><dd id="vSd"></dd></div>
+        <div><dt>asimmetria</dt><dd id="vSk"></dd></div>
+        <div><dt>valori anomali</dt><dd id="vOut"></dd></div>
+      </dl>
+      <p class="hint" id="vSkT"></p>
+      <p class="hint">Quartili con interpolazione lineare (come Excel e NumPy). Valore anomalo: oltre 1,5 volte lo scarto interquartile da Q1 o Q3.</p>
+    </div>
+    <div class="panel read" id="sForm"><h2>La formula con i numeri</h2><div class="fm" id="sFormT"></div></div>
+    <div class="panel read"><h2>A che cosa serve</h2>
+      <p style="font-size:.95rem">Ogni misura è una <b>feature</b> (una grandezza che descrive un esempio). Media e deviazione standard riassumono <i>dove</i> stanno i valori e <i>quanto</i> si disperdono: sono i due numeri usati per <b>standardizzare</b> le feature (scheda “Due feature”) prima di KNN, k-means o della discesa del gradiente.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ============ DUE FEATURE ============ -->
+<main class="app" id="pTwo" hidden>
+  <section>
+    <canvas id="cvP" width="640" height="540" style="aspect-ratio:640/540" aria-label="Diagramma di dispersione di due feature. Si possono scegliere due punti, A e B, con un clic."></canvas>
+    <div class="lg" id="pLeg"><span><i style="border-color:#C0611B"></i>retta di tendenza</span><span style="color:#C0611B"><b>A</b> primo punto scelto</span><span style="color:#0F6E6E"><b>B</b> secondo punto scelto</span></div>
+    <p class="hint"><b>Clicca su due punti</b> del grafico per sceglierli (A e B): vedrai la loro distanza con i dati grezzi, min-max e standardizzati. Un terzo clic sostituisce il più vecchio. L’anello blu segna il punto più vicino ad A nella scala attuale.</p>
+  </section>
+  <section>
+    <div class="panel" id="pData"><h2>I dati <span style="font-weight:400;text-transform:none">(dati di esempio)</span></h2>
+      <div class="row"><label for="pPre">Insieme</label><select id="pPre"></select></div>
+      <p class="pnote" id="pNote"></p>
+    </div>
+    <div class="panel" id="pScale"><h2>La scala delle feature</h2>
+      <div class="row" role="radiogroup" aria-label="Scala dei dati">
+        <label><input type="radio" name="pMode" value="raw" checked> dati grezzi</label>
+        <label><input type="radio" name="pMode" value="mm"> min-max</label>
+        <label><input type="radio" name="pMode" value="z"> standardizzati (z)</label></div>
+      <div class="row"><label><input type="checkbox" id="pEq" checked> Stessa unità sui due assi</label><label><input type="checkbox" id="pTr" checked> Retta di tendenza</label></div>
+      <p class="pnote" id="pModeT"></p>
+    </div>
+    <div class="panel read" id="pFeat" aria-live="polite"><h2>Le due feature nella scala attuale</h2><div class="tw"><table class="stt" id="pFeatT"></table></div></div>
+    <div class="panel read" id="pDist" aria-live="polite"><h2>Distanza tra A e B</h2><div id="pDistT"></div></div>
+    <div class="panel read" id="pCorr" aria-live="polite"><h2>Correlazione di Pearson</h2><div id="pCorrT"></div></div>
+    <div class="panel read" id="pWhy"><h2>Perché la scala conta</h2>
+      <p style="font-size:.95rem">Le distanze sommano i quadrati delle differenze: la feature con i numeri più grandi <b>comanda</b>, anche se non è la più importante. Per questo <b>KNN</b> e <b>k-means</b> (basati sulla distanza) vanno usati su feature <b>standardizzate</b>; vedi <a href="knn.html">Vicini e gruppi</a>.</p>
+      <p style="font-size:.95rem">Anche la <b>discesa del gradiente</b> ne soffre: con feature di scale molto diverse la funzione di costo J(θ) diventa una valle lunga e stretta e servono molti più passi (vedi <a href="regressione.html">Regressione e classificazione</a>). Standardizzando, le curve di livello diventano più rotonde.</p>
+      <p style="font-size:.95rem"><b>Il punto chiave:</b> media e deviazione standard si calcolano sui dati di <i>training</i> e si riusano uguali sui dati nuovi.</p>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var NAVY = "#1F3864", TEAL = "#0F6E6E", ORG = "#C0611B", INK = "#1d2433", MUTE = "#566074";
+  function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(r) { var u = 1 - r(), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function fmt(v, d) { if (d === undefined) d = 2; if (v === null || v === undefined || !isFinite(v)) return "—"; var k = Math.pow(10, d), s = (Math.round(v * k) / k).toFixed(d); if (/^-0(\.0*)?$/.test(s)) s = s.slice(1); return s.replace(".", ",").replace("-", "−"); }
+  function fd(v) { var s = String(Math.round(v * 1000) / 1000); if (s === "-0") s = "0"; return s.replace(".", ",").replace("-", "−"); }
+  function niceStep(raw) { var e = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / e; return (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * e; }
+  function niceAxis(lo, hi) { var span = (hi - lo) || 1, pad = span * 0.05; lo -= pad; hi += pad; var st = niceStep((hi - lo) / 6); return { lo: Math.floor(lo / st + 1e-9) * st, hi: Math.ceil(hi / st - 1e-9) * st }; }
+  function setupCanvas(cv) {
+    var ctx = cv.getContext("2d");
+    return { cv: cv, ctx: ctx, fit: function () { var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; cv._W = Math.max(200, Math.round(r.width)); cv._H = Math.max(160, Math.round(r.height)); cv.width = Math.round(cv._W * dpr); cv.height = Math.round(cv._H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); } };
+  }
+  function parseVals(txt) {
+    var out = [], bad = [];
+    txt.replace(/;/g, " ").split(/\s+/).forEach(function (t) { if (!t) return; var u = t.replace(/−/g, "-").replace(",", "."); if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(u)) out.push(parseFloat(u)); else bad.push(t); });
+    return { v: out, bad: bad };
+  }
+
+  /* ---------------------------- statistiche ---------------------------- */
+  function quant(s, p) { var h = (s.length - 1) * p, lo = Math.floor(h), hi = Math.ceil(h); return s[lo] + (s[hi] - s[lo]) * (h - lo); }
+  function stats(x, samp) {
+    var m = x.length; if (!m) return null;
+    var s = x.slice().sort(function (a, b) { return a - b; }), sum = 0, i; for (i = 0; i < m; i++) sum += x[i];
+    var mu = sum / m, S = 0, S3 = 0; for (i = 0; i < m; i++) { var d = x[i] - mu; S += d * d; S3 += d * d * d; }
+    var den = samp ? m - 1 : m, vr = den > 0 ? S / den : NaN, sdp = Math.sqrt(S / m);
+    var freq = {}, mf = 0; x.forEach(function (v) { var k = Math.round(v * 1e6); freq[k] = (freq[k] || 0) + 1; if (freq[k] > mf) mf = freq[k]; });
+    var modes = []; if (mf > 1) Object.keys(freq).forEach(function (k) { if (freq[k] === mf) modes.push(+k / 1e6); }); modes.sort(function (a, b) { return a - b; });
+    var q1 = quant(s, 0.25), q3 = quant(s, 0.75), iqr = q3 - q1, lf = q1 - 1.5 * iqr, hf = q3 + 1.5 * iqr;
+    var inside = s.filter(function (v) { return v >= lf && v <= hf; });
+    return { m: m, s: s, sum: sum, mean: mu, med: quant(s, 0.5), modes: modes, mf: mf, min: s[0], max: s[m - 1], q1: q1, q3: q3, iqr: iqr, S: S, den: den, vr: vr, sd: Math.sqrt(vr), sdp: sdp,
+      skew: (m >= 3 && sdp > 0) ? (S3 / m) / Math.pow(sdp, 3) : NaN, wlo: inside.length ? inside[0] : s[0], whi: inside.length ? inside[inside.length - 1] : s[m - 1], out: s.filter(function (v) { return v < lf || v > hf; }) };
+  }
+
+  /* ------------------------------ insiemi di esempio ------------------------------ */
+  function genAlt() { var r = rng(21), o = []; for (var i = 0; i < 24; i++) o.push(Math.round(170 + gauss(r) * 8)); return o; }
+  function genVib() { var r = rng(5), o = []; for (var i = 0; i < 30; i++) o.push(Math.round(gauss(r) * 50) / 100); return o; }
+  function genBim() { var r = rng(11), o = [], i; for (i = 0; i < 20; i++) o.push(Math.round(22 + gauss(r) * 3)); for (i = 0; i < 20; i++) o.push(Math.round(38 + gauss(r) * 3.5)); return o; }
+  var PRE = [
+    { id: "cons", name: "Tempi di consegna di 9 pacchi (minuti)", x: [20, 22, 25, 25, 27, 28, 30, 31, 33], ax: [0, 60] },
+    { id: "alt", name: "Altezze di 24 persone (cm)", x: genAlt(), ax: [140, 200] },
+    { id: "prezzi", name: "Prezzi di 12 articoli (euro)", x: [12, 14, 15, 15, 18, 19, 22, 25, 29, 35, 48, 95], ax: [0, 100] },
+    { id: "vib", name: "Vibrazioni di un accelerometro (m/s²)", x: genVib(), ax: [-2, 2] },
+    { id: "bim", name: "Durata di 40 viaggi (minuti), due mezzi di trasporto", x: genBim(), ax: [10, 50] },
+    { id: "pa", name: "Gruppo A: media 50, poco disperso", x: [46, 48, 49, 50, 50, 51, 52, 54], ax: [20, 80] },
+    { id: "pb", name: "Gruppo B: media 50, molto disperso", x: [30, 38, 44, 50, 50, 56, 62, 70], ax: [20, 80] }
+  ];
+  PRE.forEach(function (p) { $("sPre").insertAdjacentHTML("beforeend", "<option value='" + p.id + "'>" + p.name + "</option>"); });
+
+  /* ============================ SCHEDA 1 ============================ */
+  var C1 = setupCanvas($("cvS"));
+  var S = { x: [], ax: { lo: 0, hi: 60 }, sel: -1, nb: 6, samp: false, shM: true, shD: true, shS: true, dots: [], drag: false, st: null };
+  var SW = 1;
+  function precOf() { var st = niceStep((S.ax.hi - S.ax.lo) / 6) / 10, dec = Math.max(0, -Math.floor(Math.log10(st) + 1e-9)); return { st: st, dec: dec }; }
+  function snap(v) { var p = precOf(); v = Math.round(v / p.st) * p.st; v = Math.max(S.ax.lo, Math.min(S.ax.hi, v)); return parseFloat(v.toFixed(p.dec)); }
+  function expandAxis() { if (!S.x.length) return; var mn = Math.min.apply(null, S.x), mx = Math.max.apply(null, S.x); if (mn < S.ax.lo || mx > S.ax.hi) S.ax = niceAxis(Math.min(mn, S.ax.lo), Math.max(mx, S.ax.hi)); }
+  function fitAxis() { if (!S.x.length) { S.ax = { lo: 0, hi: 10 }; return; } S.ax = niceAxis(Math.min.apply(null, S.x), Math.max.apply(null, S.x)); }
+  function geo() {
+    var W = C1.cv._W, H = C1.cv._H, L = 14, R = 14, axisY = H - 24;
+    return { W: W, H: H, L: L, R: R, pw: W - L - R, hy0: 38, hy1: Math.round(H * 0.40), dy0: Math.round(H * 0.43), dy1: Math.round(H * 0.79), by0: Math.round(H * 0.81), by1: axisY - 4, axisY: axisY };
+  }
+  function px(g, v) { return g.L + (v - S.ax.lo) / (S.ax.hi - S.ax.lo) * g.pw; }
+  function val(g, X) { return S.ax.lo + (X - g.L) / g.pw * (S.ax.hi - S.ax.lo); }
+  function histCounts(st, nb) {
+    var lo = st.min, hi = st.max, w = (hi - lo) / nb; if (!(w > 0)) { w = 1; lo = st.min - 0.5; }
+    var c = []; for (var i = 0; i < nb; i++) c.push(0);
+    st.s.forEach(function (v) { var k = Math.floor((v - lo) / w); if (k >= nb) k = nb - 1; if (k < 0) k = 0; c[k]++; });
+    return { lo: lo, w: w, c: c };
+  }
+  function layoutDots(g, x) {
+    var idx = x.map(function (_, i) { return i; }).sort(function (a, b) { return x[a] - x[b]; }), r = 6, res, tries = 0, maxL;
+    do {
+      var last = [], placed = [];
+      maxL = 0;
+      idx.forEach(function (i) { var X = px(g, x[i]), L = 0; while (last[L] !== undefined && X - last[L] < 2 * r + 0.5) L++; last[L] = X; if (L > maxL) maxL = L; placed.push({ i: i, X: X, L: L }); });
+      res = placed; tries++;
+      if ((maxL + 1) * 2 * r + 4 > g.dy1 - g.dy0 && r > 2.6) r = Math.max(2.6, ((g.dy1 - g.dy0 - 4) / (maxL + 1)) / 2); else break;
+    } while (tries < 4);
+    var step = Math.min(2 * r, (g.dy1 - g.dy0 - 6 - 2 * r) / Math.max(1, maxL));
+    res.forEach(function (p) { p.Y = g.dy1 - 4 - r - p.L * step; p.r = r; });
+    return res;
+  }
+  function drawOne() {
+    C1.fit(); var ctx = C1.ctx, g = geo(), W = g.W, H = g.H; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    var st = S.st, step = niceStep((S.ax.hi - S.ax.lo) / 6), v, i;
+    ctx.font = "13px system-ui"; ctx.textAlign = "center"; ctx.lineWidth = 1;
+    for (v = Math.ceil(S.ax.lo / step - 1e-9) * step; v <= S.ax.hi + 1e-9; v += step) { var X = px(g, v); ctx.strokeStyle = "#e6ecec"; ctx.beginPath(); ctx.moveTo(X, g.hy0 - 6); ctx.lineTo(X, g.axisY); ctx.stroke(); ctx.fillStyle = MUTE; ctx.fillText(fd(v), Math.min(W - 14, Math.max(14, X)), g.H - 6); }
+    ctx.strokeStyle = "#9aa5a5"; ctx.beginPath(); ctx.moveTo(g.L, g.axisY); ctx.lineTo(W - g.R, g.axisY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(g.L, g.dy1); ctx.lineTo(W - g.R, g.dy1); ctx.stroke();
+    S.dots = [];
+    if (!st) { ctx.fillStyle = MUTE; ctx.textAlign = "center"; ctx.font = "14px system-ui"; ctx.fillText("Nessun dato: clicca nel diagramma a punti per aggiungerne.", W / 2, g.dy0 + 40); return; }
+    /* banda ±1σ */
+    if (S.shS && isFinite(st.sd)) { var a = px(g, st.mean - st.sd), b = px(g, st.mean + st.sd); ctx.fillStyle = "rgba(31,56,100,.09)"; ctx.fillRect(a, g.hy0 - 6, b - a, g.dy1 - g.hy0 + 6); ctx.strokeStyle = "rgba(31,56,100,.45)"; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(a, g.hy0 - 6); ctx.lineTo(a, g.dy1); ctx.moveTo(b, g.hy0 - 6); ctx.lineTo(b, g.dy1); ctx.stroke(); ctx.setLineDash([]); }
+    /* istogramma */
+    var h = histCounts(st, S.nb), cmax = Math.max.apply(null, h.c), hh = g.hy1 - g.hy0;
+    h.c.forEach(function (c, k) { var x0 = px(g, h.lo + k * h.w), x1 = px(g, h.lo + (k + 1) * h.w), bh = c / cmax * (hh - 16); ctx.fillStyle = "#9db3d6"; ctx.fillRect(x0 + 0.5, g.hy1 - bh, Math.max(1, x1 - x0 - 1), bh); ctx.strokeStyle = NAVY; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, g.hy1 - bh, Math.max(1, x1 - x0 - 1), bh);
+      if (c > 0 && x1 - x0 >= 15) { ctx.fillStyle = INK; ctx.font = "13px system-ui"; ctx.textAlign = "center"; ctx.fillText(c, (x0 + x1) / 2, g.hy1 - bh - 3); } });
+    ctx.strokeStyle = "#9aa5a5"; ctx.beginPath(); ctx.moveTo(g.L, g.hy1); ctx.lineTo(W - g.R, g.hy1); ctx.stroke();
+    /* punti */
+    var dots = layoutDots(g, S.x); S.dots = dots;
+    dots.forEach(function (d) { ctx.beginPath(); ctx.arc(d.X, d.Y, d.r, 0, 6.2832); ctx.fillStyle = (d.i === S.sel) ? ORG : NAVY; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke(); if (d.i === S.sel) { ctx.beginPath(); ctx.arc(d.X, d.Y, d.r + 3, 0, 6.2832); ctx.strokeStyle = ORG; ctx.lineWidth = 2; ctx.stroke(); } });
+    /* media, mediana */
+    ctx.font = "13px system-ui"; ctx.lineWidth = 2;
+    var mx = px(g, st.mean), dx = px(g, st.med);
+    if (S.shM) { ctx.strokeStyle = ORG; ctx.beginPath(); ctx.moveTo(mx, g.hy0 - 6); ctx.lineTo(mx, g.dy1); ctx.stroke(); }
+    if (S.shD) { ctx.strokeStyle = TEAL; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.moveTo(dx, g.hy0 - 6); ctx.lineTo(dx, g.dy1); ctx.stroke(); ctx.setLineDash([]); }
+    var left = mx <= dx;
+    function lab(t, X, y, col, al) { ctx.fillStyle = col; ctx.textAlign = al; ctx.fillText(t, Math.max(4, Math.min(W - 4, X)), y); }
+    if (S.shM) lab("μ = " + fmt(st.mean, 2), mx + (left && S.shD ? -4 : 4), 14, ORG, left && S.shD ? "right" : "left");
+    if (S.shD) lab("mediana " + fmt(st.med, 2), dx + (left && S.shM ? 4 : -4), 30, TEAL, left && S.shM ? "left" : "right");
+    /* box plot */
+    var cy = (g.by0 + g.by1) / 2, bh2 = Math.min(34, (g.by1 - g.by0) * 0.7);
+    ctx.lineWidth = 2; ctx.strokeStyle = NAVY; ctx.beginPath(); ctx.moveTo(px(g, st.wlo), cy); ctx.lineTo(px(g, st.q1), cy); ctx.moveTo(px(g, st.q3), cy); ctx.lineTo(px(g, st.whi), cy);
+    ctx.moveTo(px(g, st.wlo), cy - bh2 / 3); ctx.lineTo(px(g, st.wlo), cy + bh2 / 3); ctx.moveTo(px(g, st.whi), cy - bh2 / 3); ctx.lineTo(px(g, st.whi), cy + bh2 / 3); ctx.stroke();
+    ctx.fillStyle = "#cfdcf1"; ctx.fillRect(px(g, st.q1), cy - bh2 / 2, Math.max(1, px(g, st.q3) - px(g, st.q1)), bh2); ctx.strokeRect(px(g, st.q1), cy - bh2 / 2, Math.max(1, px(g, st.q3) - px(g, st.q1)), bh2);
+    ctx.strokeStyle = TEAL; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px(g, st.med), cy - bh2 / 2); ctx.lineTo(px(g, st.med), cy + bh2 / 2); ctx.stroke();
+    st.out.forEach(function (o) { ctx.beginPath(); ctx.arc(px(g, o), cy, 4.5, 0, 6.2832); ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = ORG; ctx.lineWidth = 2; ctx.stroke(); });
+    var mxp = px(g, st.mean); ctx.beginPath(); ctx.moveTo(mxp, cy - 7); ctx.lineTo(mxp + 6, cy); ctx.lineTo(mxp, cy + 7); ctx.lineTo(mxp - 6, cy); ctx.closePath(); ctx.fillStyle = ORG; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.stroke();
+  }
+  function formulaOne(st) {
+    if (!st) return "Nessun dato.";
+    var x = S.x, m = st.m, mu = fmt(st.mean, 2), t = [];
+    var ids = m <= 4 ? x.map(function (_, i) { return i; }) : [0, 1, 2, m - 1];
+    ids.forEach(function (i, k) { if (m > 4 && k === 3) t.push("…"); t.push("(" + fd(x[i]) + " − " + mu + ")²"); });
+    var h = "<p><b>Media</b> &nbsp;μ = Σ x<sup>(i)</sup> / m = " + fd(st.sum) + " / " + m + " = <b>" + mu + "</b></p>";
+    h += "<p><b>Somma dei quadrati degli scarti</b> &nbsp;S = " + t.join(" + ") + " = <b>" + fmt(st.S, 2) + "</b></p>";
+    if (S.samp) {
+      h += "<p><b>Varianza di campione</b> &nbsp;s² = S / (m − 1) = " + fmt(st.S, 2) + " / " + st.den + " = <b>" + fmt(st.vr, 2) + "</b></p>";
+      h += "<p><b>Deviazione standard</b> &nbsp;s = √s² = √" + fmt(st.vr, 2) + " = <b>" + fmt(st.sd, 2) + "</b></p>";
+      h += "<p class='hint'>Dividere per m − 1 serve quando i dati sono un <i>campione</i> e si vuole stimare la dispersione di una popolazione più grande.</p>";
+    } else {
+      h += "<p><b>Varianza di popolazione</b> &nbsp;σ² = S / m = " + fmt(st.S, 2) + " / " + m + " = <b>" + fmt(st.vr, 2) + "</b></p>";
+      h += "<p><b>Deviazione standard</b> &nbsp;σ = √σ² = √" + fmt(st.vr, 2) + " = <b>" + fmt(st.sd, 2) + "</b></p>";
+      h += "<p class='hint'>Si eleva al quadrato perché gli scarti positivi e negativi, sommati, si annullerebbero. La radice riporta il risultato nella stessa unità dei dati.</p>";
+    }
+    return h;
+  }
+  function updateOne(skipText) {
+    var st = S.st = stats(S.x, S.samp);
+    $("sClsV").textContent = S.nb;
+    $("vVarN").textContent = S.samp ? "varianza s² (campione)" : "varianza σ² (popolazione)";
+    $("vSdN").textContent = S.samp ? "dev. standard s" : "dev. standard σ";
+    if (st) {
+      $("vM").textContent = st.m; $("vMean").textContent = fmt(st.mean); $("vMed").textContent = fmt(st.med);
+      $("vMode").textContent = !st.modes.length ? "nessuna" : st.modes.length <= 3 ? st.modes.map(fd).join("; ") : fd(st.modes[0]) + " e altre";
+      $("vMin").textContent = fd(st.min); $("vMax").textContent = fd(st.max); $("vQ1").textContent = fmt(st.q1); $("vQ3").textContent = fmt(st.q3); $("vIqr").textContent = fmt(st.iqr);
+      $("vVar").textContent = fmt(st.vr); $("vSd").textContent = fmt(st.sd); $("vSk").textContent = fmt(st.skew); $("vOut").textContent = st.out.length ? st.out.map(fd).join("; ") : "nessuno";
+      var sk = st.skew; $("vSkT").textContent = !isFinite(sk) ? "Asimmetria: servono almeno 3 valori non tutti uguali." : "Asimmetria g₁ = media dei cubi degli scarti / σ³ (sempre con σ di popolazione). " + (Math.abs(sk) < 0.3 ? "Distribuzione circa simmetrica." : sk > 0 ? "Coda lunga a destra: pochi valori molto grandi." : "Coda lunga a sinistra: pochi valori molto piccoli.");
+    } else { ["vM", "vMean", "vMed", "vMode", "vMin", "vMax", "vQ1", "vQ3", "vIqr", "vVar", "vSd", "vSk", "vOut"].forEach(function (id) { $(id).textContent = id === "vM" ? "0" : "—"; }); $("vSkT").textContent = ""; }
+    $("sFormT").innerHTML = formulaOne(st);
+    if (!skipText) $("sTxt").value = S.x.map(fd).join(" ");
+    drawOne();
+  }
+  function loadPre(id) { var p = PRE.filter(function (q) { return q.id === id; })[0]; S.x = p.x.slice(); S.ax = { lo: p.ax[0], hi: p.ax[1] }; S.sel = -1; $("sPre").value = id; $("sMsg").textContent = ""; expandAxis(); updateOne(); }
+  function setText(txt) { var t = $("sTxt"); t.value = txt; t.dispatchEvent(new Event("input", { bubbles: true })); }
+  function onText() {
+    var r = parseVals($("sTxt").value); S.x = r.v.slice(0, 200); S.sel = -1; expandAxis();
+    $("sMsg").textContent = r.bad.length ? "Ignorati perché non sono numeri: " + r.bad.slice(0, 4).join(" ") + (r.bad.length > 4 ? " …" : "") : (r.v.length > 200 ? "Uso solo i primi 200 valori." : "");
+    updateOne(true);
+  }
+  $("sTxt").addEventListener("input", onText);
+  $("sPre").addEventListener("change", function () { loadPre($("sPre").value); });
+  function delSel() { if (S.sel < 0 || S.sel >= S.x.length) { $("sMsg").textContent = "Prima scegli un punto: clicca su un punto del diagramma."; return; } S.x.splice(S.sel, 1); S.sel = -1; $("sMsg").textContent = ""; updateOne(); }
+  $("sDel").onclick = delSel;
+  $("sSort").onclick = function () { S.x.sort(function (a, b) { return a - b; }); S.sel = -1; updateOne(); };
+  $("sFit").onclick = function () { fitAxis(); updateOne(true); };
+  $("sCls").addEventListener("input", function () { S.nb = +$("sCls").value; updateOne(true); });
+  $("sCsamp").addEventListener("change", function () { S.samp = $("sCsamp").checked; updateOne(true); });
+  [["sShM", "shM"], ["sShD", "shD"], ["sShS", "shS"]].forEach(function (a) { $(a[0]).addEventListener("change", function () { S[a[1]] = $(a[0]).checked; updateOne(true); }); });
+  function evPos(ev) { var r = C1.cv.getBoundingClientRect(); return { X: ev.clientX - r.left, Y: ev.clientY - r.top }; }
+  $("cvS").addEventListener("pointerdown", function (ev) {
+    var p = evPos(ev), g = geo(); C1.cv.focus({ preventScroll: true });
+    var best = -1, bd = 1e9; S.dots.forEach(function (d) { var dd = Math.hypot(d.X - p.X, d.Y - p.Y); if (dd < bd) { bd = dd; best = d.i; } });
+    if (best >= 0 && bd <= 14) { S.sel = best; S.drag = true; C1.cv.setPointerCapture(ev.pointerId); updateOne(); return; }
+    if (p.Y >= g.dy0 - 8 && p.Y <= g.dy1 + 10 && p.X >= g.L - 4 && p.X <= g.W - g.R + 4) { S.x.push(snap(val(g, p.X))); S.sel = S.x.length - 1; S.drag = true; C1.cv.setPointerCapture(ev.pointerId); expandAxis(); updateOne(); }
+    else { S.sel = -1; updateOne(true); }
+  });
+  $("cvS").addEventListener("pointermove", function (ev) { if (!S.drag || S.sel < 0) return; var g = geo(); S.x[S.sel] = snap(val(g, evPos(ev).X)); updateOne(); });
+  function endDrag() { S.drag = false; }
+  $("cvS").addEventListener("pointerup", endDrag); $("cvS").addEventListener("pointercancel", endDrag);
+  $("cvS").addEventListener("keydown", function (ev) {
+    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); delSel(); }
+    else if ((ev.key === "ArrowLeft" || ev.key === "ArrowRight") && S.sel >= 0) { ev.preventDefault(); var d = (ev.key === "ArrowLeft" ? -1 : 1) * precOf().st; S.x[S.sel] = snap(S.x[S.sel] + d); updateOne(); }
+  });
+
+  /* ============================ SCHEDA 2 ============================ */
+  var apt = [[40, 2], [48, 1], [55, 3], [62, 2], [68, 3], [74, 2], [80, 3], [82, 5], [88, 3], [88, 4], [95, 3], [102, 4], [110, 5], [118, 4], [126, 5], [140, 5], [155, 6], [170, 6]];
+  var gel = [[60, 2], [85, 3], [110, 5], [120, 4], [150, 7], [165, 9], [180, 8], [200, 12], [215, 11], [230, 15], [250, 16], [270, 19], [290, 18], [310, 22]];
+  var uu = []; for (var q = -6; q <= 6; q++) uu.push([q / 2, q * q / 4]);
+  function genInd() { var r = rng(71), o = []; for (var i = 0; i < 20; i++) o.push([Math.round(r() * 100), Math.round(r() * 100)]); return o; }
+  var DS = [
+    { id: "apt", name: "Appartamenti: superficie e numero di stanze", xn: "superficie (m²)", yn: "stanze", un: ["m²", ""], pts: apt, note: "18 appartamenti inventati ma plausibili. Scale molto diverse: da 40 a 170 contro da 1 a 6." },
+    { id: "gel", name: "Gelati venduti e scottature (inventati)", xn: "gelati venduti al giorno", yn: "scottature curate", un: ["", ""], pts: gel, note: "Dati inventati. r è alto, ma i gelati non causano le scottature: entrambi crescono quando c’è il sole (causa comune)." },
+    { id: "u", name: "Disagio e scostamento dalla temperatura ideale", xn: "scostamento dalla temperatura ideale (°C)", yn: "disagio (punti)", un: ["°C", ""], pts: uu, note: "Dati inventati: y = x² per x da −3 a 3. La relazione c’è, e perfetta, ma non è una retta." },
+    { id: "ind", name: "Due grandezze senza relazione (a caso)", xn: "grandezza x", yn: "grandezza y", un: ["", ""], pts: genInd(), note: "20 coppie generate a caso con seme fisso: nessuna relazione, ma r non è mai esattamente zero." }
+  ];
+  DS.forEach(function (d) { $("pPre").insertAdjacentHTML("beforeend", "<option value='" + d.id + "'>" + d.name + "</option>"); });
+  var C2 = setupCanvas($("cvP"));
+  var P = { ds: DS[0], mode: "raw", eq: true, tr: true, sel: [6, 8], pts: [], raw: null };
+  function colStats(a) { var m = a.length, s = 0, i; a.forEach(function (v) { s += v; }); var mu = s / m, S2 = 0; a.forEach(function (v) { S2 += (v - mu) * (v - mu); }); return { mean: mu, sd: Math.sqrt(S2 / m), min: Math.min.apply(null, a), max: Math.max.apply(null, a) }; }
+  function prep() {
+    var pts = P.ds.pts, xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+    P.cx = colStats(xs); P.cy = colStats(ys); P.m = pts.length;
+    var cx = P.cx, cy = P.cy;
+    P.T = {
+      raw: pts.map(function (p) { return [p[0], p[1]]; }),
+      mm: pts.map(function (p) { return [(p[0] - cx.min) / (cx.max - cx.min || 1), (p[1] - cy.min) / (cy.max - cy.min || 1)]; }),
+      z: pts.map(function (p) { return [(p[0] - cx.mean) / (cx.sd || 1), (p[1] - cy.mean) / (cy.sd || 1)]; })
+    };
+    var sxy = 0; pts.forEach(function (p) { sxy += (p[0] - cx.mean) * (p[1] - cy.mean); });
+    P.r = (cx.sd > 0 && cy.sd > 0) ? sxy / P.m / (cx.sd * cy.sd) : NaN;
+  }
+  function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
+  function nearestOf(mode, ia) { var T = P.T[mode], best = -1, bd = 1e9; T.forEach(function (p, i) { if (i === ia) return; var d = dist(p, T[ia]); if (d < bd) { bd = d; best = i; } }); return { i: best, d: bd }; }
+  function viewP() {
+    var W = C2.cv._W, H = C2.cv._H, L = 54, B = 44, Tt = 12, R = 14, pw = W - L - R, ph = H - Tt - B, T = P.T[P.mode];
+    var xs = T.map(function (p) { return p[0]; }), ys = T.map(function (p) { return p[1]; });
+    function rg(a) { var lo = Math.min.apply(null, a), hi = Math.max.apply(null, a), sp = (hi - lo) || 1; return [lo - sp * 0.08, hi + sp * 0.08]; }
+    var xr = rg(xs), yr = rg(ys), sx = pw / (xr[1] - xr[0]), sy = ph / (yr[1] - yr[0]);
+    if (P.eq) { var s = Math.min(sx, sy); sx = sy = s; }
+    var cxm = (xr[0] + xr[1]) / 2, cym = (yr[0] + yr[1]) / 2;
+    return { W: W, H: H, L: L, B: B, T: Tt, R: R, pw: pw, ph: ph, sx: sx, sy: sy, cx: cxm, cy: cym,
+      X: function (v) { return L + pw / 2 + (v - cxm) * sx; }, Y: function (v) { return Tt + ph / 2 - (v - cym) * sy; } };
+  }
+  function drawTwo() {
+    C2.fit(); var ctx = C2.ctx, V = viewP(), T = P.T[P.mode], W = V.W, H = V.H;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.beginPath(); ctx.rect(V.L, V.T, V.pw, V.ph); ctx.clip();
+    ctx.font = "13px system-ui"; ctx.lineWidth = 1;
+    var xlo = V.cx - V.pw / 2 / V.sx, xhi = V.cx + V.pw / 2 / V.sx, ylo = V.cy - V.ph / 2 / V.sy, yhi = V.cy + V.ph / 2 / V.sy, stx = niceStep((xhi - xlo) / 6), sty = niceStep((yhi - ylo) / 6), v;
+    for (v = Math.ceil(xlo / stx) * stx; v <= xhi; v += stx) { ctx.strokeStyle = "#e6ecec"; ctx.beginPath(); ctx.moveTo(V.X(v), V.T); ctx.lineTo(V.X(v), V.T + V.ph); ctx.stroke(); }
+    for (v = Math.ceil(ylo / sty) * sty; v <= yhi; v += sty) { ctx.strokeStyle = "#e6ecec"; ctx.beginPath(); ctx.moveTo(V.L, V.Y(v)); ctx.lineTo(V.L + V.pw, V.Y(v)); ctx.stroke(); }
+    if (P.tr && isFinite(P.r)) { var xs = T.map(function (p) { return p[0]; }), ys = T.map(function (p) { return p[1]; }), a = colStats(xs), b = colStats(ys), sl = P.r * b.sd / a.sd, ic = b.mean - sl * a.mean; ctx.strokeStyle = ORG; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(V.X(xlo), V.Y(ic + sl * xlo)); ctx.lineTo(V.X(xhi), V.Y(ic + sl * xhi)); ctx.stroke(); }
+    var A = P.sel[0], B = P.sel[1];
+    if (A !== undefined && B !== undefined) { ctx.strokeStyle = "#7a8896"; ctx.lineWidth = 1.6; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(V.X(T[A][0]), V.Y(T[A][1])); ctx.lineTo(V.X(T[B][0]), V.Y(T[B][1])); ctx.stroke(); ctx.setLineDash([]); }
+    if (A !== undefined) { var nn = nearestOf(P.mode, A); if (nn.i >= 0) { ctx.beginPath(); ctx.arc(V.X(T[nn.i][0]), V.Y(T[nn.i][1]), 11, 0, 6.2832); ctx.strokeStyle = "#1f77b4"; ctx.lineWidth = 3; ctx.stroke(); } }
+    T.forEach(function (p) { ctx.beginPath(); ctx.arc(V.X(p[0]), V.Y(p[1]), 5, 0, 6.2832); ctx.fillStyle = NAVY; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2; ctx.stroke(); });
+    P.sel.forEach(function (i, k) { var X = V.X(T[i][0]), Y = V.Y(T[i][1]), col = k === 0 ? ORG : TEAL; ctx.beginPath(); ctx.arc(X, Y, 7, 0, 6.2832); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = col; ctx.font = "bold 14px system-ui"; ctx.textAlign = "left"; ctx.fillText(k === 0 ? "A" : "B", X + 9, Y - 8); });
+    ctx.restore();
+    ctx.strokeStyle = "#9aa5a5"; ctx.lineWidth = 1; ctx.strokeRect(V.L, V.T, V.pw, V.ph);
+    ctx.fillStyle = MUTE; ctx.font = "13px system-ui"; ctx.textAlign = "center";
+    for (v = Math.ceil(xlo / stx) * stx; v <= xhi; v += stx) ctx.fillText(fd(v), V.X(v), V.T + V.ph + 16);
+    ctx.textAlign = "right"; for (v = Math.ceil(ylo / sty) * sty; v <= yhi; v += sty) ctx.fillText(fd(v), V.L - 6, V.Y(v) + 4);
+    ctx.textAlign = "center"; ctx.fillStyle = INK; ctx.fillText("x: " + P.ds.xn + (P.mode === "raw" ? "" : P.mode === "mm" ? " · min-max" : " · z"), V.L + V.pw / 2, H - 6);
+    ctx.save(); ctx.translate(13, V.T + V.ph / 2); ctx.rotate(-Math.PI / 2); ctx.fillText("y: " + P.ds.yn + (P.mode === "raw" ? "" : P.mode === "mm" ? " · min-max" : " · z"), 0, 0); ctx.restore();
+    P.view = V;
+  }
+  function modeName(m) { return m === "raw" ? "dati grezzi" : m === "mm" ? "min-max" : "standardizzati (z)"; }
+  function updateTwo() {
+    var T = P.T[P.mode], cs = [colStats(T.map(function (p) { return p[0]; })), colStats(T.map(function (p) { return p[1]; }))];
+    var d = P.ds;
+    $("pModeT").innerHTML = P.mode === "raw" ? "Dati così come misurati." : P.mode === "mm" ? "Min-max: x′ = (x − min) / (max − min). Tutti i valori finiscono tra 0 e 1." : "Standardizzati: z = (x − μ) / σ. Ogni feature ha media 0 e deviazione standard 1.";
+    $("pNote").textContent = d.note;
+    var h = "<tr><th>feature</th><th>media</th><th>dev. std σ</th><th>min</th><th>max</th></tr>";
+    [[d.xn, cs[0]], [d.yn, cs[1]]].forEach(function (r) { h += "<tr><td>" + r[0] + "</td><td class='num'>" + fmt(r[1].mean, 2) + "</td><td class='num'>" + fmt(r[1].sd, 2) + "</td><td class='num'>" + fmt(r[1].min, 2) + "</td><td class='num'>" + fmt(r[1].max, 2) + "</td></tr>"; });
+    $("pFeatT").innerHTML = h;
+    /* distanza */
+    var A = P.sel[0], B = P.sel[1], H = "";
+    function pstr(i) { var p = d.pts[i]; return "(" + fd(p[0]) + "; " + fd(p[1]) + ")"; }
+    if (A === undefined) H = "<p>Clicca su un punto del grafico per sceglierlo come <b>A</b>.</p>";
+    else if (B === undefined) H = "<p><b>A</b> = " + pstr(A) + ". Clicca su un altro punto per sceglierlo come <b>B</b>.</p>";
+    else {
+      var a = T[A], b = T[B], dx = a[0] - b[0], dy = a[1] - b[1], dd = Math.hypot(dx, dy);
+      H = "<p><b>A</b> = " + pstr(A) + " &nbsp; <b>B</b> = " + pstr(B) + " &nbsp;<span class='hint'>(valori misurati: x; y)</span></p>";
+      H += "<div class='fm'><p>Nella scala “" + modeName(P.mode) + "”: d = √((x<sub>A</sub> − x<sub>B</sub>)² + (y<sub>A</sub> − y<sub>B</sub>)²) = √((" + fmt(a[0], 3) + " − " + fmt(b[0], 3) + ")² + (" + fmt(a[1], 3) + " − " + fmt(b[1], 3) + ")²) = √(" + fmt(dx * dx, 3) + " + " + fmt(dy * dy, 3) + ") = <b>" + fmt(dd, 3) + "</b></p></div>";
+      H += "<div class='tw'><table class='stt'><tr><th>scala</th><th>distanza A–B</th><th>quanto pesa x</th><th>quanto pesa y</th><th>punto più vicino ad A</th></tr>";
+      ["raw", "mm", "z"].forEach(function (m) { var t = P.T[m], ddx = t[A][0] - t[B][0], ddy = t[A][1] - t[B][1], tot = ddx * ddx + ddy * ddy, nn = nearestOf(m, A);
+        H += "<tr" + (m === P.mode ? " style='background:#fff7ea'" : "") + "><td>" + modeName(m) + "</td><td class='num'>" + fmt(Math.sqrt(tot), 3) + "</td><td class='num'>" + fmt(ddx * ddx / tot * 100, 1) + " %</td><td class='num'>" + fmt(ddy * ddy / tot * 100, 1) + " %</td><td>" + pstr(nn.i) + "<br>d = " + fmt(nn.d, 3) + "</td></tr>"; });
+      H += "</table></div><p class='hint'>“Quanto pesa” = quota di d² dovuta a ciascuna feature (somma 100 %).</p>";
+    }
+    $("pDistT").innerHTML = H;
+    /* correlazione */
+    var r = P.r, xs = T.map(function (p) { return p[0]; }), ys = T.map(function (p) { return p[1]; }), a1 = colStats(xs), b1 = colStats(ys), sl = r * b1.sd / a1.sd, ic = b1.mean - sl * a1.mean, ar = Math.abs(r);
+    var forza = !isFinite(r) ? "non definita" : ar < 0.2 ? "praticamente nessuna correlazione lineare" : ar < 0.5 ? "correlazione lineare debole" : ar < 0.8 ? "correlazione lineare moderata" : "correlazione lineare forte";
+    var C = "<p class='big'>r = (1/m) Σ z<sub>x</sub><sup>(i)</sup> · z<sub>y</sub><sup>(i)</sup> = <b>" + fmt(r, 2) + "</b> — " + forza + (isFinite(r) && ar >= 0.2 ? (r > 0 ? ", positiva" : ", negativa") : "") + ".</p>";
+    C += "<p>Retta di tendenza nella scala attuale: ŷ = " + fmt(ic, 3) + " " + (sl < 0 ? "−" : "+") + " " + fmt(Math.abs(sl), 3) + " · x. <span class='hint'>La pendenza cambia con la scala; <b>r no</b>: è lo stesso nelle tre scale.</span></p>";
+    C += "<p class='hint'>r misura solo quanto i punti stanno su una <b>retta</b>, non se una grandezza <b>causa</b> l’altra.</p>";
+    $("pCorrT").innerHTML = C;
+    drawTwo();
+  }
+  function setMode(m) { P.mode = m; var e = document.querySelector("input[name=pMode][value=" + m + "]"); e.checked = true; updateTwo(); }
+  function loadDS(id) { P.ds = DS.filter(function (q) { return q.id === id; })[0]; $("pPre").value = id; prep(); P.sel = id === "apt" ? [6, 9] : [0, P.m - 1]; updateTwo(); }
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=pMode]"), function (e) { e.addEventListener("change", function () { P.mode = e.value; updateTwo(); }); });
+  $("pEq").addEventListener("change", function () { P.eq = $("pEq").checked; updateTwo(); });
+  $("pTr").addEventListener("change", function () { P.tr = $("pTr").checked; updateTwo(); });
+  $("pPre").addEventListener("change", function () { loadDS($("pPre").value); });
+  $("cvP").addEventListener("pointerdown", function (ev) {
+    var r = C2.cv.getBoundingClientRect(), X = ev.clientX - r.left, Y = ev.clientY - r.top, V = P.view, T = P.T[P.mode], best = -1, bd = 1e9;
+    T.forEach(function (p, i) { var dd = Math.hypot(V.X(p[0]) - X, V.Y(p[1]) - Y); if (dd < bd) { bd = dd; best = i; } });
+    if (best < 0 || bd > 16) return;
+    var k = P.sel.indexOf(best); if (k >= 0) P.sel.splice(k, 1); else { P.sel.push(best); if (P.sel.length > 2) P.sel.shift(); }
+    updateTwo();
+  });
+
+  /* ------------------------------ schede ------------------------------ */
+  function tab(w) { var one = w === "one"; $("pOne").hidden = !one; $("pTwo").hidden = one; $("tbOne").classList.toggle("on", one); $("tbTwo").classList.toggle("on", !one); if (one) updateOne(true); else updateTwo(); }
+  $("tbOne").onclick = function () { tab("one"); }; $("tbTwo").onclick = function () { tab("two"); };
+  window.addEventListener("resize", function () { if (!$("pOne").hidden) updateOne(true); else updateTwo(); });
+
+  /* --------------------------- esperienze guidate --------------------------- */
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setc(id, on) { var e = $(id); e.checked = on; e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function init1(o) { tab("one"); loadPre(o.pre); setc("sCsamp", !!o.samp); setv("sCls", o.cls || 6); setc("sShM", true); setc("sShD", true); setc("sShS", o.band !== false); }
+  function init2(id, mode, o) { tab("two"); loadDS(id); setc("pEq", !(o && o.eq === false)); setc("pTr", !(o && o.tr === false)); setMode(mode || "raw"); if (o && o.sel) { P.sel = o.sel.slice(); updateTwo(); } }
+  var EXPS = [
+    { id: "s1", title: "Media contro mediana: un valore anomalo", time: "6 min", desc: "Un solo valore estremo sposta la media ma non la mediana.", onShow: function () { tab("one"); }, steps: [
+      { t: "Nove tempi di consegna", x: "Qui ci sono i tempi di consegna di <b>9 pacchi</b>, in minuti (dati di esempio). I punti sono nel <b>diagramma a punti</b>; sopra c’è l’istogramma, sotto il box plot.", el: "#cvS", apply: function () { init1({ pre: "cons", band: false }); } },
+      { t: "Media e mediana", x: "La <b>media</b> (linea arancione) è la somma divisa per m; la <b>mediana</b> (linea verde tratteggiata) è il valore di mezzo dei dati ordinati. Qui valgono <b>26,78</b> e <b>27,00</b>: quasi uguali.", el: "#sStats" },
+      { t: "Un pacco si perde", x: "Aggiungiamo un 10° tempo: <b>120 minuti</b> (un pacco rimasto fermo). L’asse si allarga. Premi “Fallo per me”.", el: "#sData", btn: "Aggiungi 120", apply: function () { setText("20 22 25 25 27 28 30 31 33 120"); } },
+      { t: "La media corre, la mediana resta", x: "La media sale a <b>36,10</b>, la mediana solo a <b>27,50</b>. Un valore estremo “tira” la media, mentre la mediana guarda solo l’ordine dei dati. Si dice che è <b>robusta</b>.", el: "#sStats" },
+      { t: "Il box plot lo segnala", x: "Nel box plot il punto a 120 compare come cerchio staccato: è un <b>valore anomalo</b> (oltre 1,5 volte lo scarto interquartile da Q3). L’asimmetria diventa fortemente positiva: <b>2,58</b>.", el: "#cvS" },
+      { t: "Prova tu: trascina il punto", x: "Nel diagramma a punti <b>trascina</b> il punto di destra verso sinistra e guarda la media seguirlo. Per ora lo portiamo a 35: media <b>27,60</b>, mediana <b>27,50</b>.", el: "#cvS", btn: "Porta a 35", apply: function () { setText("20 22 25 25 27 28 30 31 33 35"); } },
+      { t: "Che cosa ricordare", x: "Con dati asimmetrici o con valori anomali la <b>mediana</b> descrive meglio il “caso tipico”. La media però resta fondamentale: è quella che entra nella deviazione standard e nei modelli. In IA un valore anomalo può spostare un modello: bisogna sempre guardare i dati.", el: "#sForm" }
+    ] },
+    { id: "s2", title: "Stessa media, dispersione diversa", time: "6 min", desc: "Due gruppi con la stessa media: la deviazione standard misura quanto sono sparpagliati.", onShow: function () { tab("one"); }, steps: [
+      { t: "Il gruppo A", x: "Otto valori molto vicini tra loro. La media è <b>50,00</b>, esattamente il valore centrale.", el: "#cvS", apply: function () { init1({ pre: "pa", band: true }); } },
+      { t: "La banda ±1σ", x: "L’area azzurra è la banda <b>μ ± 1σ</b>. La deviazione standard di popolazione è <b>σ = 2,29</b>: i dati stanno quasi tutti in una banda stretta.", el: ["#cvS", "#vSd"] },
+      { t: "Il gruppo B", x: "Ora i valori del gruppo B: stessa media <b>50,00</b> e stessa mediana, ma molto più sparpagliati. La banda si allarga: <b>σ = 12,04</b>.", el: "#cvS", btn: "Carica il gruppo B", apply: function () { loadPre("pb"); } },
+      { t: "La formula con i numeri", x: "Guarda il riquadro: gli scarti dalla media (anche grandi) sono elevati al quadrato e sommati: S = <b>1160,00</b>; divisa per m = 8 dà la varianza <b>145,00</b>; la radice dà σ.", el: "#sForm" },
+      { t: "Popolazione o campione?", x: "Attiva “varianza di campione”: si divide per <b>m − 1 = 7</b> invece che per 8. Per il gruppo B la deviazione standard passa da 12,04 a <b>12,87</b>. Serve quando i dati sono solo un campione di una popolazione più grande.", el: "#sOpts", btn: "Attiva campione", apply: function () { setc("sCsamp", true); } },
+      { t: "Perché conta nei dati", x: "Due feature con la stessa media ma dispersione diversa si comportano in modo molto diverso nei modelli. Per questo, prima di molti algoritmi, si <b>standardizza</b>: si toglie la media e si divide per la deviazione standard (prossime esperienze).", el: "#sStats", btn: "Torna a popolazione", apply: function () { setc("sCsamp", false); } }
+    ] },
+    { id: "s3", title: "L’istogramma e la scelta delle classi", time: "6 min", desc: "Il numero di classi cambia la forma che vediamo: quarante durate di viaggio.", onShow: function () { tab("one"); }, steps: [
+      { t: "Quaranta durate di viaggio", x: "Sono 40 durate (in minuti) di viaggi fatti con <b>due mezzi diversi</b> (dati di esempio generati con un seme fisso). Guarda l’istogramma in alto.", el: "#cvS", apply: function () { init1({ pre: "bim", cls: 6, band: false }); } },
+      { t: "Troppo poche classi", x: "Con <b>2 classi</b> si vedono solo due barre, di 21 e 19 valori: la forma è nascosta.", el: ["#sOpts", "#cvS"], btn: "2 classi", apply: function () { setv("sCls", 2); } },
+      { t: "Una buona scelta", x: "Con <b>8 classi</b> compaiono <b>due gobbe</b> separate da un vuoto: i dati vengono da due gruppi. La media (29,48) cade proprio nel vuoto, dove non c’è nessun dato!", el: ["#sOpts", "#cvS"], btn: "8 classi", apply: function () { setv("sCls", 8); } },
+      { t: "Troppe classi", x: "Con <b>20 classi</b> ogni barra contiene pochi valori e la forma diventa a denti di sega: si vede il <b>caso</b>, non la struttura.", el: ["#sOpts", "#cvS"], btn: "20 classi", apply: function () { setv("sCls", 20); } },
+      { t: "Regola pratica", x: "Una regola per partire: circa <b>√m</b> classi (qui √40 ≈ 6) oppure la formula di Sturges, 1 + log₂ m ≈ 6. Poi si prova a cambiare: se la forma cambia molto, bisogna fidarsi poco di un solo istogramma.", el: "#sCls", btn: "6 classi", apply: function () { setv("sCls", 6); } },
+      { t: "Il messaggio", x: "Il box plot, che mostra solo cinque numeri, <b>non vede le due gobbe</b>. Per capire la forma dei dati serve l’istogramma; per confrontare molti gruppi, il box plot. Guardare i dati prima di riassumerli!", el: "#cvS" }
+    ] },
+    { id: "s4", title: "Standardizzare le feature e la distanza", time: "8 min", desc: "Metri quadri e stanze: chi comanda la distanza? Dati grezzi, min-max e z-score.", onShow: function () { tab("two"); }, steps: [
+      { t: "Due feature, due scale", x: "Appartamenti: la <b>superficie</b> va da 40 a 170 m², le <b>stanze</b> da 1 a 6. Con la stessa unità sui due assi i punti sono quasi su una <b>riga orizzontale</b>: le stanze “contano” poco.", el: "#cvP", apply: function () { init2("apt", "raw", { sel: [6, 9], tr: false }); } },
+      { t: "A e B: due appartamenti", x: "Abbiamo scelto <b>A</b> = (80 m²; 3 stanze) e <b>B</b> = (88 m²; 4 stanze): 8 m² in più e una stanza in più. Distanza con i dati grezzi: <b>8,062</b>. Nella tabella, la superficie pesa <b>98,5 %</b> di d²: la stanza in più non conta quasi nulla.", el: "#pDist" },
+      { t: "Il più vicino ad A", x: "Con i dati grezzi l’anello blu indica come “più simile” ad A l’appartamento (82; 5): ha <b>5 stanze invece di 3</b>, ma è a soli 2 m² di differenza (distanza 2,828). L’appartamento (88; 3), con le stesse 3 stanze, dista 8. Per la distanza grezza una stanza “vale” come un metro quadro!", el: ["#cvP", "#pDist"] },
+      { t: "Scala min-max", x: "Portiamo ogni feature tra 0 e 1. Ora l’anello si sposta su (88; 3), un appartamento con le stesse 3 stanze, e nella distanza A–B il peso della superficie scende a <b>8,6 %</b>: contano soprattutto le stanze.", el: ["#pScale", "#cvP"], btn: "Min-max", apply: function () { setMode("mm"); } },
+      { t: "Standardizzazione z", x: "Con z = (x − μ) / σ ogni feature ha media 0 e deviazione standard 1 (guarda la tabella). Distanza A–B: <b>0,742</b>; la superficie pesa 9,3 %, le stanze il resto (90,7 %).", el: ["#pFeat", "#pDist"], btn: "z-score", apply: function () { setMode("z"); } },
+      { t: "Il grafico ora è tondo", x: "Con z i due assi hanno la stessa unità di misura “in deviazioni standard” e la nuvola ha una forma più equilibrata. Il più vicino ad A è (88; 3), con le stesse 3 stanze: più sensato per un appartamento da 80 m² con 3 stanze.", el: "#cvP" },
+      { t: "Perché conta davvero", x: "KNN e k-means usano le distanze: con feature grezze deciderebbe quasi solo la superficie. La discesa del gradiente converge più in fretta con feature standardizzate. <b>Regola:</b> media e σ si calcolano sul training e si riusano sui dati nuovi.", el: "#pWhy" }
+    ] },
+    { id: "s5", title: "Correlazione non è causalità", time: "7 min", desc: "r alto senza causa diretta, e r vicino a zero con una relazione perfetta ma curva.", onShow: function () { tab("two"); }, steps: [
+      { t: "Gelati e scottature", x: "Dati <b>inventati</b>: gelati venduti ogni giorno e persone curate per scottature sulla spiaggia. I punti stanno quasi su una retta.", el: "#cvP", apply: function () { init2("gel", "raw", { eq: false, sel: [0, 13] }); } },
+      { t: "Il coefficiente r", x: "La correlazione di Pearson è <b>r = 0,98</b>: valore vicino a 1, quindi forte correlazione lineare positiva. Quando i gelati crescono, crescono anche le scottature.", el: "#pCorr" },
+      { t: "r non cambia con la scala", x: "Passa a standardizzati: la pendenza della retta cambia, ma r resta <b>0,98</b>. La correlazione non dipende dalle unità di misura.", el: ["#pCorr", "#pScale"], btn: "Standardizza", apply: function () { setMode("z"); } },
+      { t: "Ma chi causa chi?", x: "Mangiare gelati <b>non</b> provoca scottature. Entrambi dipendono da una terza variabile: il <b>sole e il caldo</b> (causa comune). Una correlazione alta dice che due grandezze variano insieme, non perché.", el: "#pData" },
+      { t: "Una relazione perfetta ma curva", x: "Ora disagio contro scostamento dalla temperatura ideale: y = x², una relazione <b>perfetta</b>. Eppure r = <b>0,00</b>: i punti a sinistra e a destra si compensano.", el: ["#cvP", "#pCorr"], btn: "Carica la parabola", apply: function () { init2("u", "raw", { eq: false, sel: [0, 12] }); } },
+      { t: "Lettura corretta", x: "r misura solo quanto i punti stanno su una <b>retta</b>. r ≈ 0 non significa “nessun legame”. Per questo si guarda sempre il grafico, prima di fidarsi di un numero.", el: "#pCorr" },
+      { t: "Dati senza relazione", x: "Con due grandezze generate a caso r non è mai esattamente zero, qui è 0,05: con pochi punti il caso produce correlazioni piccole. In IA: una feature molto correlata con l’etichetta è utile per predire, ma non dimostra una causa.", el: "#pCorr", btn: "Carica dati casuali", apply: function () { init2("ind", "raw", { eq: false, sel: [0, 19] }); } }
+    ] }
+  ];
+  window.__s = { S: S, P: P, stats: stats, tab: tab, setText: setText, loadPre: loadPre, loadDS: loadDS, setMode: setMode, nearestOf: nearestOf, PRE: PRE, DS: DS, histCounts: histCounts, init1: init1, init2: init2 };
+  Tour.init(EXPS);
+  loadPre("cons"); prep(); loadDS("apt"); tab("one");
+  window.addEventListener("load", function () { if (!$("pOne").hidden) updateOne(true); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filtri e reti convoluzionali</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+.tabs{flex-wrap:wrap}
+.tabs button{font:inherit;font-size:15px;padding:7px 12px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer}
+.tabs button.on{background:var(--navy);color:#fff}
+.tabs button:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+.cn-fg{display:grid;grid-template-columns:repeat(3,64px);gap:6px;margin:4px 0}
+.cn-fg input{width:64px;font:inherit;font-size:16px;padding:6px 4px;text-align:center;border:1px solid var(--navy);border-radius:6px;background:#fff;color:var(--ink)}
+.cn-pre{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.cn-calc{border-collapse:collapse;margin:4px 0 8px}
+.cn-calc td{border:1px solid var(--line);padding:3px 6px;text-align:center;font-size:14px;line-height:1.3;background:#fff;vertical-align:middle}
+.cn-calc td b{display:block;font-size:15px}
+.cn-calc td.pad{background:#e6ecee}
+.cn-sum{font-size:14.5px;line-height:1.6;overflow-wrap:anywhere}
+.cn-maps{display:flex;flex-wrap:wrap;gap:12px}
+.cn-maps>div{flex:1 1 170px;min-width:0}
+.cn-maps h3{font-size:.9rem;margin:0 0 4px;color:var(--navy)}
+.cn-big{font-size:1.05rem}
+.cn-card{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:8px 0;border-top:1px solid var(--line)}
+.cn-card:first-of-type{border-top:0}
+.cn-card h3{flex:1 0 100%;margin:0;font-size:.95rem}
+.cn-mx{display:grid;grid-template-columns:repeat(3,26px);gap:2px;font-size:14px;text-align:center}
+.cn-mx span{display:block;background:#fff;border:1px solid var(--line);border-radius:3px;line-height:24px;font-variant-numeric:tabular-nums}
+.cn-mx span.p{background:#fbe5d3;border-color:#e6b98f}
+.cn-mx span.n{background:#dbe7f3;border-color:#a8c2de}
+.cn-cell figcaption,.cn-cell small{display:block;font-size:14px;color:var(--mute);margin-top:2px}
+.cn-cell{margin:0}
+.app canvas.cn-s1{width:124px}
+.app canvas.cn-s2{width:140px}
+.cn-vote{display:grid;grid-template-columns:minmax(0,9.5em) minmax(0,1fr) 3em;gap:6px 8px;align-items:center;font-size:15px;margin:4px 0}
+.cn-vote .bg{background:#e3e9e9;border-radius:5px;height:20px;overflow:hidden}
+.cn-vote .bg i{display:block;height:100%;background:var(--teal);border-radius:5px}
+.cn-vote .bg i.o{background:var(--orange)}
+.cn-vote output{text-align:right}
+.cn-note{margin-bottom:12px}
+.cn-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px;color:var(--mute);margin-top:6px}
+.cn-leg i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Filtri e reti convoluzionali</h1><p>come un computer “guarda” un’immagine: filtri, mappe, pooling</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="wrap" style="padding-top:12px"><div class="tabs" role="tablist"><button id="tb1" class="on" role="tab">1 · Il filtro che scorre</button><button id="tb2" role="tab">2 · Perché la convoluzione?</button><button id="tb3" role="tab">3 · Una piccola rete</button></div></div>
+
+<!-- ============ SCHEDA 1 ============ -->
+<main class="app" id="p1">
+  <section>
+    <canvas id="cvImg" width="640" height="640" style="aspect-ratio:1" role="img" aria-label="Immagine in scala di grigi 10 per 10, con la finestra 3 per 3 del filtro; clic o trascinamento per disegnare"></canvas>
+    <p class="hint">Ogni casella è un pixel: <b>0 = bianco</b>, <b>1 = nero</b>, 0,5 = grigio. <b>Clicca</b> per cambiare un pixel, <b>trascina</b> per dipingere. Il riquadro arancione è la finestra del filtro. Le caselle grigie intorno (se il padding è 1) valgono 0.</p>
+    <div class="panel" id="pScan"><h2>Far scorrere il filtro</h2>
+      <div class="row"><button id="bStep" class="pri">Passo ▶</button><button id="bBack">◀ Indietro</button><button id="bRestart">Ricomincia</button><label><input type="checkbox" id="cAll"> Mostra subito tutta la mappa</label></div>
+      <div class="row"><label for="sPos">Posizione</label><input type="range" id="sPos" min="0" max="63" value="0"><output id="sPosV" aria-live="polite"></output></div>
+      <div class="row"><label for="sStride">Passo (stride)</label><select id="sStride"><option>1</option><option>2</option><option>3</option></select>
+        <label for="sPad">Padding</label><select id="sPad"><option>0</option><option>1</option></select></div>
+      <p class="hint" id="sizeT"></p>
+    </div>
+    <div class="panel read" id="pCalc" aria-live="polite"><h2>Il calcolo in questa posizione</h2><div id="calcT"></div></div>
+  </section>
+  <section>
+    <div class="panel" id="pImg"><h2>L’immagine</h2>
+      <div class="row"><label for="sImg">Esempi</label><select id="sImg"></select>
+        <label for="sBrush">Pennello</label><select id="sBrush"><option value="1">Nero (1)</option><option value="0.5">Grigio (0,5)</option><option value="0">Bianco (0)</option></select></div>
+      <div class="row"><button id="bClear">Cancella</button><button id="bInv">Inverti</button></div>
+    </div>
+    <div class="panel" id="pFilt"><h2>Il filtro 3×3</h2>
+      <div class="cn-fg" id="fGrid"></div>
+      <div class="row"><label for="fDiv">Dividi la somma per</label><select id="fDiv"><option>1</option><option>2</option><option>4</option><option>9</option></select><span class="read" id="fName"></span></div>
+      <div class="cn-pre" id="fPre"></div>
+      <p class="hint">Puoi scrivere i nove numeri che vuoi. Positivo = “qui voglio nero”, negativo = “qui voglio bianco”.</p>
+    </div>
+    <div class="panel" id="pMaps"><h2>La mappa delle attivazioni</h2>
+      <div class="row" id="optRow"><label><input type="checkbox" id="cRelu"> ReLU: i negativi diventano 0</label><label><input type="checkbox" id="cPool"> Max-pooling 2×2</label></div>
+      <div class="cn-maps" style="margin-top:8px">
+        <div><h3 id="mapT">Mappa</h3><canvas id="cvMap" width="400" height="400" style="aspect-ratio:1" role="img" aria-label="Mappa delle attivazioni del filtro, colori divergenti: blu negativo, bianco zero, arancione positivo"></canvas></div>
+        <div id="poolBox"><h3 id="poolT">Dopo il pooling</h3><canvas id="cvPool" width="400" height="400" style="aspect-ratio:1" role="img" aria-label="Mappa ridotta dal max-pooling 2 per 2"></canvas></div>
+      </div>
+      <div class="cn-leg"><span><i style="background:rgb(33,102,172)"></i>negativo</span><span><i style="background:#fff;border:1px solid #bbb"></i>zero</span><span><i style="background:rgb(214,96,26)"></i>positivo</span><span>riquadro arancione = posizione attuale</span></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ SCHEDA 2 ============ -->
+<main class="app" id="p2" hidden>
+  <section>
+    <div class="panel" id="pBar"><h2>Quanti parametri? (scala logaritmica)</h2>
+      <canvas id="cvBar" width="520" height="250" style="aspect-ratio:520/250" role="img" aria-label="Barre in scala logaritmica: parametri dello strato completamente connesso e dello strato convoluzionale"></canvas>
+      <div class="hint">Ogni tacca è <b>10 volte</b> più grande della precedente: una barra più lunga di poco può voler dire un numero enorme.</div>
+    </div>
+    <div class="panel read" id="pReadout" aria-live="polite"><h2>I conti</h2><div id="readT"></div></div>
+    <div class="panel read" id="pIdee"><h2>Tre idee dietro la convoluzione</h2>
+      <p><b>1 · Connessioni locali.</b> Ogni valore della mappa dipende solo da un quadratino 3×3 di pixel, non dall’intera immagine.</p>
+      <p><b>2 · Pesi condivisi.</b> Lo <b>stesso</b> filtro (9 pesi + 1 bias) si usa in tutte le posizioni: i parametri non dipendono dalla grandezza dell’immagine.</p>
+      <p><b>3 · Il tratto si sposta, la risposta si sposta.</b> Se un tratto compare altrove, il filtro lo riconosce con la stessa intensità, in un’altra cella della mappa (equivarianza per traslazione). Il pooling rende poi la rete poco sensibile a piccoli spostamenti.</p>
+      <p class="hint">Un confronto onesto: i due strati non fanno lo stesso lavoro (il denso restituisce H numeri, il convoluzionale k mappe), ma il conto mostra quanto costa “non sfruttare” la struttura dell’immagine.</p>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="pCtl2"><h2>Le dimensioni</h2>
+      <div class="row"><label for="rN">Lato dell’immagine N</label><input type="range" id="rN" min="0" max="8" value="2"><output id="rNV"></output></div>
+      <div class="row"><label for="rH">Neuroni dello strato denso H</label><select id="rH"><option>10</option><option selected>100</option><option>1000</option></select></div>
+      <div class="row"><label for="rK">Filtri convoluzionali k (3×3)</label><input type="range" id="rK" min="1" max="64" value="8"><output id="rKV"></output></div>
+    </div>
+    <div class="panel" id="pInv"><h2>Lo stesso filtro, due posizioni</h2>
+      <p class="hint" style="margin:0 0 6px">Filtro “linea verticale” (−1 2 −1 su ogni riga). Due tratti uguali: <b style="color:#0F6E6E">A</b> (fisso) e <b style="color:#C0611B">B</b> (lo sposti tu).</p>
+      <div class="cn-maps">
+        <div><h3>Immagine 10×10</h3><canvas id="cvInvImg" width="300" height="300" style="aspect-ratio:1" role="img" aria-label="Immagine con due tratti verticali uguali, A e B"></canvas></div>
+        <div><h3>Mappa del filtro 8×8</h3><canvas id="cvInvMap" width="300" height="300" style="aspect-ratio:1" role="img" aria-label="Mappa del filtro: i picchi dei due tratti sono identici ma in posizioni diverse"></canvas></div>
+      </div>
+      <div class="row"><label for="rCb">Colonna di B</label><input type="range" id="rCb" min="1" max="8" value="7"><output id="rCbV"></output></div>
+      <div class="row"><label for="rRb">Riga iniziale di B</label><input type="range" id="rRb" min="0" max="6" value="5"><output id="rRbV"></output></div>
+      <div class="read" id="invT" style="margin-top:8px" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ SCHEDA 3 ============ -->
+<main class="app" id="p3" hidden>
+  <section>
+    <div class="panel note cn-note" id="pNote3"><b>Attenzione:</b> in questa pagina i quattro filtri sono <b>scelti a mano</b> da noi. In una vera rete convoluzionale i numeri dei filtri <b>non</b> li decide nessuno: partono casuali e vengono <b>appresi</b> con la backpropagation, riducendo il costo J(θ) sui dati di addestramento. Qui vediamo solo che cosa farebbe un banco di filtri già “allenato”.</div>
+    <canvas id="cvImg3" width="640" height="640" style="aspect-ratio:1" role="img" aria-label="Immagine 10 per 10 da analizzare con il banco di filtri; clic per cambiare un pixel"></canvas>
+    <div class="panel" id="pImg3" style="margin-top:10px"><h2>L’immagine da analizzare</h2>
+      <div class="row"><label for="sImg3">Esempi</label><select id="sImg3"></select></div>
+      <div class="row"><label for="rB3">Bias b (soglia)</label><input type="range" id="rB3" min="-4" max="0" value="-2"><output id="rB3V"></output></div>
+      <p class="hint">Clicca i pixel per modificare l’immagine. Il bias b si somma a ogni risultato prima della ReLU: con b = −2 una cella “si accende” solo se il filtro dà più di 2.</p>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="pBank"><h2>Il banco di 4 filtri</h2>
+      <p class="hint" style="margin:0">Per ogni filtro: somma → + b → ReLU → mappa 8×8 → max-pooling 2×2 → mappa 4×4.</p>
+      <div id="bankT"></div>
+    </div>
+    <div class="panel read" id="pVotes" aria-live="polite"><h2>Il voto dei tratti</h2>
+      <p class="hint" style="margin:0 0 6px">Voto = somma di tutte le attivazioni della mappa 4×4 (dopo ReLU e pooling). Le diagonali sommano i due filtri, / e \.</p>
+      <div id="voteT"></div>
+      <div id="verdT" style="margin-top:8px"></div>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var NB = " ";
+
+  /* ------------------------------ utilità ------------------------------ */
+  function fmt(v, d) { d = d == null ? 2 : d; var k = Math.pow(10, d), x = Math.round(v * k) / k; if (x === 0) x = 0; return String(x).replace(".", ",").replace("-", "−"); }
+  function pn(v) { return v < 0 ? "(" + fmt(v) + ")" : fmt(v); }
+  function fint(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, NB); }
+  function fitSq(cv) { var w = Math.max(90, Math.round(cv.getBoundingClientRect().width)), d = window.devicePixelRatio || 1; cv._W = w; cv._H = w; cv.width = Math.round(w * d); cv.height = Math.round(w * d); var ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0); return ctx; }
+  function fitRect(cv) { var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, w = Math.max(160, Math.round(r.width)), h = Math.max(100, Math.round(r.height)); cv._W = w; cv._H = h; cv.width = Math.round(w * d); cv.height = Math.round(h * d); var ctx = cv.getContext("2d"); ctx.setTransform(d, 0, 0, d, 0, 0); return ctx; }
+
+  /* ------------------------------ immagini ------------------------------ */
+  var N = 10;
+  var IMGS = {
+    quadrato: ["..........", "..........", "..######..", "..#....#..", "..#....#..", "..#....#..", "..#....#..", "..######..", "..........", ".........."],
+    croce: ["..........", "....#.....", "....#.....", "....#.....", ".#########", "....#.....", "....#.....", "....#.....", "....#.....", ".........."],
+    T: ["..........", ".#######..", "....#.....", "....#.....", "....#.....", "....#.....", "....#.....", "....#.....", "....#.....", ".........."],
+    diag: ["..........", "........#.", ".......#..", "......#...", ".....#....", "....#.....", "...#......", "..#.......", ".#........", ".........."],
+    diag2: ["..........", ".#........", "..#.......", "...#......", "....#.....", ".....#....", "......#...", ".......#..", "........#.", ".........."],
+    mezzo: ["#####.....", "#####.....", "#####.....", "#####.....", "#####.....", "#####.....", "#####.....", "#####.....", "#####.....", "#####....."],
+    c0: ["..........", "...####...", "..#....#..", ".#......#.", ".#......#.", ".#......#.", ".#......#.", "..#....#..", "...####...", ".........."],
+    c1: ["..........", ".....#....", "....##....", "...#.#....", ".....#....", ".....#....", ".....#....", ".....#....", "...#####..", ".........."],
+    c7: ["..........", "..######..", "......#...", ".....#....", ".....#....", "....#.....", "....#.....", "...#......", "...#......", ".........."]
+  };
+  var IMGLIST = [["quadrato", "Quadrato"], ["croce", "Croce"], ["T", "Lettera T"], ["diag", "Diagonale /"], ["diag2", "Diagonale \\"], ["mezzo", "Bordo netto (metà nera)"], ["c0", "Cifra 0"], ["c1", "Cifra 1"], ["c7", "Cifra 7"]];
+  function bitmap(name) { var a = []; IMGS[name].forEach(function (row) { for (var i = 0; i < N; i++) a.push(row.charAt(i) === "#" ? 1 : 0); }); return a; }
+  function fillSel(sel, withFree) {
+    var h = withFree ? "<option value='free'>(disegno libero)</option>" : "";
+    sel.innerHTML = h + IMGLIST.map(function (q) { return "<option value='" + q[0] + "'>" + q[1] + "</option>"; }).join("");
+  }
+
+  /* ------------------------------ convoluzione ------------------------------ */
+  function pxAt(img, r, c) { return (r < 0 || c < 0 || r >= N || c >= N) ? 0 : img[r * N + c]; }
+  function outSize(s, p) { return Math.floor((N + 2 * p - 3) / s) + 1; }
+  function winVals(img, r, c, s, p) { var a = []; for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) a.push(pxAt(img, r * s - p + i, c * s - p + j)); return a; }
+  function convMap(img, f, s, p, div, bias) {
+    var M = outSize(s, p), out = [];
+    for (var r = 0; r < M; r++) for (var c = 0; c < M; c++) { var w = winVals(img, r, c, s, p), t = 0; for (var k = 0; k < 9; k++) t += w[k] * f[k]; out.push(t / div + (bias || 0)); }
+    return { M: M, d: out };
+  }
+  function relu(d) { return d.map(function (v) { return v > 0 ? v : 0; }); }
+  function maxPool(d, M) { var P = Math.floor(M / 2), o = []; for (var i = 0; i < P; i++) for (var j = 0; j < P; j++) o.push(Math.max(d[2 * i * M + 2 * j], d[2 * i * M + 2 * j + 1], d[(2 * i + 1) * M + 2 * j], d[(2 * i + 1) * M + 2 * j + 1])); return { P: P, d: o }; }
+
+  /* ------------------------------ disegno ------------------------------ */
+  function divCol(v, sc) { var t = Math.max(-1, Math.min(1, v / sc)), a = Math.abs(t), e = t < 0 ? [33, 102, 172] : [214, 96, 26]; return { c: "rgb(" + Math.round(255 + (e[0] - 255) * a) + "," + Math.round(255 + (e[1] - 255) * a) + "," + Math.round(255 + (e[2] - 255) * a) + ")", dark: a > 0.55 }; }
+  function drawImg(cv, img, p, win, opt) {
+    opt = opt || {}; var ctx = fitSq(cv), W = cv._W, tot = N + 2 * p, cs = W / tot, r, c;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, W);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (r = 0; r < tot; r++) for (c = 0; c < tot; c++) {
+      var ir = r - p, ic = c - p, ins = ir >= 0 && ir < N && ic >= 0 && ic < N, v = ins ? img[ir * N + ic] : 0, x = c * cs, y = r * cs;
+      var col = (opt.tint && ins && v > 0) ? opt.tint(ir, ic) : null;
+      if (ins) { var g = Math.round(255 * (1 - v)); ctx.fillStyle = col || "rgb(" + g + "," + g + "," + g + ")"; } else ctx.fillStyle = "#e6ecee";
+      ctx.fillRect(x, y, cs, cs);
+      if (!opt.nonum && cs >= 20) { ctx.font = Math.min(15, Math.floor(cs * 0.42)) + "px system-ui"; ctx.fillStyle = ins ? (v >= 0.5 ? "#fff" : "#1d2433") : "#8a9696"; ctx.fillText(fmt(v, 1), x + cs / 2, y + cs / 2 + 1); }
+    }
+    ctx.strokeStyle = "#c3cccc"; ctx.lineWidth = 1;
+    for (r = 0; r <= tot; r++) { ctx.beginPath(); ctx.moveTo(0, r * cs); ctx.lineTo(W, r * cs); ctx.stroke(); ctx.beginPath(); ctx.moveTo(r * cs, 0); ctx.lineTo(r * cs, W); ctx.stroke(); }
+    if (p) { ctx.strokeStyle = "#1F3864"; ctx.lineWidth = 2; ctx.strokeRect(p * cs, p * cs, N * cs, N * cs); }
+    if (win) { ctx.fillStyle = "rgba(192,97,27,.13)"; ctx.fillRect(win.x * cs, win.y * cs, 3 * cs, 3 * cs); ctx.strokeStyle = "#C0611B"; ctx.lineWidth = 3.5; ctx.strokeRect(win.x * cs + 1.5, win.y * cs + 1.5, 3 * cs - 3, 3 * cs - 3); }
+  }
+  /* mappa: data, M, scala, reveal(i) -> bool, cur (indice evidenziato o -1), numeri */
+  function drawMap(cv, d, M, sc, reveal, cur, ring) {
+    var ctx = fitSq(cv), W = cv._W, cs = W / Math.max(M, 1), i, j;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, W); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (M < 1) { ctx.fillStyle = "#566074"; ctx.font = "14px system-ui"; ctx.fillText("troppo piccola", W / 2, W / 2); return; }
+    for (i = 0; i < M; i++) for (j = 0; j < M; j++) {
+      var k = i * M + j, x = j * cs, y = i * cs;
+      if (reveal && !reveal(k)) { ctx.fillStyle = "#f1f4f4"; ctx.fillRect(x, y, cs, cs); continue; }
+      var cc = divCol(d[k], sc); ctx.fillStyle = cc.c; ctx.fillRect(x, y, cs, cs);
+      if (cs >= 17) { var t = fmt(d[k], 2), fs = Math.min(15, Math.floor(cs * 0.42)); ctx.font = fs + "px system-ui"; if (ctx.measureText(t).width > cs - 3) t = fmt(d[k], 1); while (fs > 9 && ctx.measureText(t).width > cs - 2) { fs--; ctx.font = fs + "px system-ui"; } ctx.fillStyle = cc.dark ? "#fff" : "#1d2433"; ctx.fillText(t, x + cs / 2, y + cs / 2 + 1); }
+    }
+    ctx.strokeStyle = "#d3dbdb"; ctx.lineWidth = 1;
+    for (i = 0; i <= M; i++) { ctx.beginPath(); ctx.moveTo(0, i * cs); ctx.lineTo(W, i * cs); ctx.stroke(); ctx.beginPath(); ctx.moveTo(i * cs, 0); ctx.lineTo(i * cs, W); ctx.stroke(); }
+    if (cur != null && cur >= 0) { var cr = Math.floor(cur / M), ccn = cur % M; ctx.strokeStyle = "#C0611B"; ctx.lineWidth = 3.5; ctx.strokeRect(ccn * cs + 1.5, cr * cs + 1.5, cs - 3, cs - 3); }
+    if (ring) ring.forEach(function (q) { ctx.strokeStyle = q.col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc((q.c + .5) * cs, (q.r + .5) * cs, cs * 0.46, 0, 6.2832); ctx.stroke(); });
+  }
+  function paintable(cv, get) {
+    var drag = false, tv = 1;
+    function cell(ev) { var g = get(), r = cv.getBoundingClientRect(), tot = N + 2 * g.p, c = Math.floor((ev.clientX - r.left) / r.width * tot) - g.p, rr = Math.floor((ev.clientY - r.top) / r.height * tot) - g.p; return (c >= 0 && c < N && rr >= 0 && rr < N) ? rr * N + c : -1; }
+    cv.addEventListener("pointerdown", function (ev) { var g = get(), i = cell(ev); if (i < 0) return; drag = true; try { cv.setPointerCapture(ev.pointerId); } catch (e) { } var b = g.brush(); tv = b === 0 ? 0 : (g.img[i] === b ? 0 : b); g.img[i] = tv; g.after(); ev.preventDefault(); });
+    cv.addEventListener("pointermove", function (ev) { if (!drag) return; var g = get(), i = cell(ev); if (i >= 0 && g.img[i] !== tv) { g.img[i] = tv; g.after(); } });
+    var up = function () { drag = false; }; cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  }
+
+  /* ============================== SCHEDA 1 ============================== */
+  var PRE = [
+    ["id", "Identità", [0, 0, 0, 0, 1, 0, 0, 0, 0], 1],
+    ["bv", "Bordi verticali", [-1, 0, 1, -1, 0, 1, -1, 0, 1], 1],
+    ["bo", "Bordi orizzontali", [-1, -1, -1, 0, 0, 0, 1, 1, 1], 1],
+    ["bd", "Bordi diagonali", [0, 1, 1, -1, 0, 1, -1, -1, 0], 1],
+    ["bl", "Sfocatura (media)", [1, 1, 1, 1, 1, 1, 1, 1, 1], 9],
+    ["nt", "Nitidezza", [0, -1, 0, -1, 5, -1, 0, -1, 0], 1]
+  ];
+  function preset(id) { return PRE.filter(function (q) { return q[0] === id; })[0]; }
+  var A = { img: bitmap("quadrato"), imgName: "quadrato", f: preset("bv")[2].slice(), div: 1, s: 1, p: 0, relu: false, pool: false, cur: 0, all: false, brush: 1 };
+  fillSel($("sImg"), true); $("sImg").value = "quadrato";
+  $("fPre").innerHTML = PRE.map(function (q) { return "<button data-p='" + q[0] + "'>" + q[1] + "</button>"; }).join("");
+  $("fGrid").innerHTML = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (i) { return "<input type='number' step='any' inputmode='decimal' id='f" + i + "' aria-label='Peso del filtro, riga " + (Math.floor(i / 3) + 1) + " colonna " + (i % 3 + 1) + "'>"; }).join("");
+  function M1() { return outSize(A.s, A.p); }
+  function map1() { return convMap(A.img, A.f, A.s, A.p, A.div); }
+  function matchName() { var n = "personalizzato"; PRE.forEach(function (q) { if (q[3] === A.div && q[2].every(function (v, i) { return v === A.f[i]; })) n = q[1]; }); return n; }
+  function syncUI1() {
+    var M = M1(), i; if (A.cur > M * M - 1) A.cur = M * M - 1; if (A.cur < 0) A.cur = 0;
+    for (i = 0; i < 9; i++) { var e = $("f" + i); if (document.activeElement !== e) e.value = String(A.f[i]); }
+    $("fDiv").value = String(A.div); $("fName").innerHTML = "Filtro: <b>" + matchName() + "</b>";
+    $("sStride").value = String(A.s); $("sPad").value = String(A.p); $("cAll").checked = A.all; $("cRelu").checked = A.relu; $("cPool").checked = A.pool;
+    $("sPos").max = M * M - 1; $("sPos").value = A.cur; $("sPosV").textContent = (A.cur + 1) + " di " + (M * M);
+    $("sImg").value = A.imgName; $("sBrush").value = String(A.brush);
+    $("sizeT").innerHTML = "Dimensione della mappa: ⌊(N + 2·p − 3) / s⌋ + 1 = ⌊(" + N + " + " + (2 * A.p) + " − 3) / " + A.s + "⌋ + 1 = <b>" + M + "</b>, cioè " + M + "×" + M + " = " + (M * M) + " numeri.";
+    $("bStep").disabled = A.cur >= M * M - 1; $("bBack").disabled = A.cur <= 0;
+  }
+  function render1() {
+    syncUI1();
+    var M = M1(), r = Math.floor(A.cur / M), c = A.cur % M, mp = map1(), d = mp.d, sc = 1, k;
+    d.forEach(function (v) { sc = Math.max(sc, Math.abs(v)); });
+    drawImg($("cvImg"), A.img, A.p, { x: c * A.s, y: r * A.s });
+    var shown = A.relu ? relu(d) : d, rev = function (q) { return A.all || q <= A.cur; };
+    $("mapT").textContent = "Mappa " + M + "×" + M + (A.relu ? " dopo ReLU" : "");
+    drawMap($("cvMap"), shown, M, sc, rev, A.all ? -1 : A.cur);
+    $("poolBox").hidden = !A.pool;
+    if (A.pool) {
+      var pl = maxPool(shown, M); $("poolT").textContent = "Dopo il max-pooling: " + pl.P + "×" + pl.P;
+      drawMap($("cvPool"), pl.d, pl.P, sc, function (q) { var i = Math.floor(q / pl.P), j = q % pl.P; return A.all || (2 * i + 1) * M + 2 * j + 1 <= A.cur; }, -1);
+    }
+    /* calcolo */
+    var w = winVals(A.img, r, c, A.s, A.p), t = 0, rows = "", terms = [], i0 = r * A.s - A.p, j0 = c * A.s - A.p;
+    for (var i = 0; i < 3; i++) { rows += "<tr>"; for (var j = 0; j < 3; j++) { k = i * 3 + j; var pr = w[k] * A.f[k], out = (i0 + i < 0 || j0 + j < 0 || i0 + i >= N || j0 + j >= N); t += pr; terms.push(pn(pr)); rows += "<td" + (out ? " class='pad'" : "") + ">" + fmt(w[k], 1) + " × " + pn(A.f[k]) + "<b>" + fmt(pr) + "</b></td>"; } rows += "</tr>"; }
+    var S = t / A.div, h = "Posizione <b>" + (A.cur + 1) + "</b> di " + (M * M) + " (riga " + (r + 1) + ", colonna " + (c + 1) + " della mappa). Ogni casella è <i>pixel × peso</i>, sotto c’è il prodotto" + (A.p ? " (grigio = padding, vale 0)" : "") + ".<table class='cn-calc'>" + rows + "</table>";
+    h += "<div class='cn-sum'>Somma: " + terms.join(" + ") + " = <b>" + fmt(t) + "</b>";
+    if (A.div !== 1) h += "<br>Divisa per " + A.div + ": <b>" + fmt(S) + "</b>";
+    if (A.relu) h += "<br>ReLU: max(0; " + fmt(S) + ") = <b>" + fmt(Math.max(0, S)) + "</b>";
+    h += "</div>";
+    $("calcT").innerHTML = h;
+  }
+  function stepTo(n) { A.cur = Math.max(0, Math.min(M1() * M1() - 1, n)); render1(); }
+  function readFilter() { for (var i = 0; i < 9; i++) { var v = parseFloat(String($("f" + i).value).replace(",", ".")); A.f[i] = isFinite(v) ? v : 0; } }
+  $("fGrid").addEventListener("input", function () { readFilter(); render1(); });
+  $("fGrid").addEventListener("change", function () { render1(); });
+  $("fPre").addEventListener("click", function (ev) { var b = ev.target.closest("button"); if (!b) return; setPreset(b.getAttribute("data-p")); });
+  function setPreset(id) { var q = preset(id); A.f = q[2].slice(); A.div = q[3]; render1(); }
+  $("fDiv").onchange = function () { A.div = +$("fDiv").value; render1(); };
+  $("sStride").onchange = function () { A.s = +$("sStride").value; A.cur = 0; render1(); };
+  $("sPad").onchange = function () { A.p = +$("sPad").value; A.cur = 0; render1(); };
+  $("sPos").oninput = function () { stepTo(+$("sPos").value); };
+  $("bStep").onclick = function () { stepTo(A.cur + 1); };
+  $("bBack").onclick = function () { stepTo(A.cur - 1); };
+  $("bRestart").onclick = function () { stepTo(0); };
+  $("cAll").onchange = function () { A.all = $("cAll").checked; render1(); };
+  $("cRelu").onchange = function () { A.relu = $("cRelu").checked; render1(); };
+  $("cPool").onchange = function () { A.pool = $("cPool").checked; render1(); };
+  $("sBrush").onchange = function () { A.brush = +$("sBrush").value; };
+  function loadImg(n) { A.img = bitmap(n); A.imgName = n; render1(); }
+  $("sImg").onchange = function () { if ($("sImg").value !== "free") loadImg($("sImg").value); };
+  $("bClear").onclick = function () { A.img = A.img.map(function () { return 0; }); A.imgName = "free"; render1(); };
+  $("bInv").onclick = function () { A.img = A.img.map(function (v) { return 1 - v; }); A.imgName = "free"; render1(); };
+  paintable($("cvImg"), function () { return { img: A.img, p: A.p, brush: function () { return A.brush; }, after: function () { A.imgName = "free"; render1(); } }; });
+
+  /* ============================== SCHEDA 2 ============================== */
+  var NS = [8, 16, 28, 32, 64, 128, 224, 512, 1000];
+  var B = { ni: 2, H: 100, k: 8, cb: 7, rb: 5 };
+  var LV = [-1, 2, -1, -1, 2, -1, -1, 2, -1];
+  function sup(n) { var m = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" }; return String(n).split("").map(function (c) { return m[c]; }).join(""); }
+  function params() { var n = NS[B.ni], px = n * n; return { n: n, px: px, fcW: px * B.H, fc: px * B.H + B.H, cvW: 9 * B.k, cv: 10 * B.k }; }
+  function drawBar() {
+    var q = params(), cv = $("cvBar"), ctx = fitRect(cv), W = cv._W, H = cv._H, L = 14, R = 14, pw = W - L - R, tx = function (v) { return L + pw * Math.log(v) / Math.log(1e10); };
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); ctx.textBaseline = "alphabetic";
+    var base = H - 30; ctx.strokeStyle = "#e3e9e9"; ctx.fillStyle = "#566074"; ctx.font = "14px system-ui"; ctx.textAlign = "center";
+    for (var e = 0; e <= 10; e++) { var x = L + pw * e / 10; ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(x, base); ctx.stroke(); if (e % 2 === 0) { ctx.textAlign = e === 0 ? "left" : e === 10 ? "right" : "center"; ctx.fillText(e === 0 ? "1" : "10" + sup(e), x, base + 20); } }
+    var bars = [["Strato denso: " + fint(q.fc), q.fc, "#C0611B"], ["Strato convoluzionale: " + fint(q.cv), q.cv, "#0F6E6E"]], bh = 34, y0 = 12;
+    bars.forEach(function (b, i) { var y = y0 + i * ((base - 12) / 2); ctx.fillStyle = "#1d2433"; ctx.font = "bold 15px system-ui"; ctx.textAlign = "left"; ctx.fillText(b[0], L, y + 16); ctx.fillStyle = b[2]; ctx.fillRect(L, y + 22, Math.max(2, tx(b[1]) - L), bh - 8); });
+  }
+  function render2() {
+    var q = params(); $("rNV").textContent = q.n + "×" + q.n; $("rKV").textContent = B.k;
+    var ratio = q.fc / q.cv, rs = ratio >= 100 ? fint(ratio) : fmt(ratio, 1);
+    $("readT").innerHTML = "Immagine <b>" + q.n + "×" + q.n + " = " + fint(q.px) + "</b> pixel.<br>" +
+      "<b>Strato denso</b> con H = " + B.H + " neuroni: ogni neurone ha un peso per ogni pixel → " + fint(q.px) + " × " + fint(B.H) + " = <b>" + fint(q.fcW) + "</b> pesi, più " + fint(B.H) + " bias = <b>" + fint(q.fc) + "</b> parametri.<br>" +
+      "<b>Strato convoluzionale</b> con k = " + B.k + " filtri 3×3: 9 × " + B.k + " = <b>" + fint(q.cvW) + "</b> pesi, più " + B.k + " bias = <b>" + fint(q.cv) + "</b> parametri, qualunque sia N.<br>" +
+      "Il denso ha circa <b>" + rs + "</b> volte più parametri.";
+    drawBar(); drawInv();
+  }
+  function strokeImg(which) { var im = new Array(100).fill(0), i; if (which !== "B") for (i = 1; i <= 4; i++) im[i * N + 2] = 1; if (which !== "A") for (i = 0; i < 4; i++) im[(B.rb + i) * N + B.cb] = 1; return im; }
+  function peaks(im) { var m = convMap(im, LV, 1, 0, 1), mx = Math.max.apply(null, m.d), a = []; m.d.forEach(function (v, i) { if (v === mx) a.push({ r: Math.floor(i / m.M), c: i % m.M }); }); return { max: mx, cells: a }; }
+  function drawInv() {
+    var im = strokeImg("AB"), m = convMap(im, LV, 1, 0, 1), pa = peaks(strokeImg("A")), pb = peaks(strokeImg("B"));
+    drawImg($("cvInvImg"), im, 0, null, { nonum: true, tint: function (r, c) { return (c === 2 && r >= 1 && r <= 4) ? "#0F6E6E" : "#C0611B"; } });
+    var ring = pa.cells.map(function (q) { return { r: q.r, c: q.c, col: "#0F6E6E" }; }).concat(pb.cells.map(function (q) { return { r: q.r, c: q.c, col: "#C0611B" }; }));
+    drawMap($("cvInvMap"), m.d, m.M, 6, null, -1, ring);
+    $("rCbV").textContent = B.cb + 1; $("rRbV").textContent = B.rb + 1;
+    var close = Math.abs(B.cb - 2) <= 2;
+    function lst(p) { return p.cells.map(function (q) { return "(riga " + (q.r + 1) + ", colonna " + (q.c + 1) + ")"; }).join(" e "); }
+    $("invT").innerHTML = "Il picco <b>" + fmt(pa.max, 0) + "</b> del tratto <b style='color:#0F6E6E'>A</b> è nelle celle " + lst(pa) + ".<br>Lo stesso picco <b>" + fmt(pb.max, 0) + "</b> del tratto <b style='color:#C0611B'>B</b> è nelle celle " + lst(pb) + ".<br>" +
+      "B è spostato di <b>" + (B.rb - 1) + "</b> righe e <b>" + (B.cb - 2) + "</b> colonne rispetto ad A, e i picchi sono spostati esattamente di quanto." + (close ? "<br><span class='hint'>I due tratti sono vicini: nella mappa le risposte si sovrappongono.</span>" : "");
+  }
+  $("rN").oninput = function () { B.ni = +$("rN").value; render2(); };
+  $("rH").onchange = function () { B.H = +$("rH").value; render2(); };
+  $("rK").oninput = function () { B.k = +$("rK").value; render2(); };
+  $("rCb").oninput = function () { B.cb = +$("rCb").value; render2(); };
+  $("rRb").oninput = function () { B.rb = +$("rRb").value; render2(); };
+  function syncUI2() { $("rN").value = B.ni; $("rH").value = String(B.H); $("rK").value = B.k; $("rCb").value = B.cb; $("rRb").value = B.rb; }
+
+  /* ============================== SCHEDA 3 ============================== */
+  var FB = [["Linea verticale", [-1, 2, -1, -1, 2, -1, -1, 2, -1]], ["Linea orizzontale", [-1, -1, -1, 2, 2, 2, -1, -1, -1]], ["Diagonale /", [-1, -1, 2, -1, 2, -1, 2, -1, -1]], ["Diagonale \\", [2, -1, -1, -1, 2, -1, -1, -1, 2]]];
+  var C = { img: bitmap("croce"), name: "croce", b: -2 };
+  fillSel($("sImg3"), true); $("sImg3").value = "croce";
+  $("bankT").innerHTML = FB.map(function (q, i) {
+    return "<div class='cn-card'><h3>" + q[0] + "</h3><div class='cn-mx' aria-label='Filtro " + q[0] + "'>" + q[1].map(function (v) { return "<span class='" + (v > 0 ? "p" : "n") + "'>" + fmt(v, 0) + "</span>"; }).join("") + "</div>" +
+      "<figure class='cn-cell'><canvas class='cn-s1' id='cm" + i + "' width='124' height='124' style='aspect-ratio:1' role='img' aria-label='Mappa 8 per 8 dopo ReLU del filtro " + q[0] + "'></canvas><small>mappa 8×8 (ReLU)</small></figure>" +
+      "<figure class='cn-cell'><canvas class='cn-s2' id='cp" + i + "' width='140' height='140' style='aspect-ratio:1' role='img' aria-label='Mappa 4 per 4 dopo pooling del filtro " + q[0] + "'></canvas><small>pooling 4×4</small></figure></div>";
+  }).join("");
+  function votes(img, b) { return FB.map(function (q) { var m = convMap(img, q[1], 1, 0, 1, b), r = relu(m.d), pl = maxPool(r, m.M), s = 0; pl.d.forEach(function (v) { s += v; }); return { r: r, M: m.M, pl: pl, sum: s }; }); }
+  function render3() {
+    $("sImg3").value = C.name; $("rB3").value = C.b; $("rB3V").textContent = C.b === 0 ? "0" : fmt(C.b, 0);
+    drawImg($("cvImg3"), C.img, 0, null);
+    var v = votes(C.img, C.b);
+    v.forEach(function (o, i) { drawMap($("cm" + i), o.r, o.M, 6, null, -1); drawMap($("cp" + i), o.pl.d, o.pl.P, 6, null, -1); });
+    var cat = [["Linee verticali", v[0].sum, "V"], ["Linee orizzontali", v[1].sum, "H"], ["Linee diagonali", v[2].sum + v[3].sum, "D"]], mx = Math.max.apply(null, cat.map(function (q) { return q[1]; }));
+    $("voteT").innerHTML = cat.map(function (q) { return "<div class='cn-vote'><span>" + q[0] + "</span><span class='bg'><i" + (q[2] === "D" ? " class='o'" : "") + " style='width:" + (mx > 0 ? Math.round(100 * q[1] / mx) : 0) + "%'></i></span><output>" + fmt(q[1], 0) + "</output></div>"; }).join("") +
+      "<p class='hint' style='margin-top:4px'>Per filtro: verticale " + fmt(v[0].sum, 0) + ", orizzontale " + fmt(v[1].sum, 0) + ", diagonale / " + fmt(v[2].sum, 0) + ", diagonale \\ " + fmt(v[3].sum, 0) + ".</p>";
+    var win = cat.filter(function (q) { return mx > 0 && q[1] * 2 >= mx; }).map(function (q) { return q[0].toLowerCase(); });
+    $("verdT").innerHTML = mx > 0 ? "Hanno almeno metà del voto massimo: <b>" + win.join(", ") + "</b>." : "Nessun filtro si accende: <b>nessun tratto riconosciuto</b>.";
+  }
+  $("sImg3").onchange = function () { if ($("sImg3").value !== "free") { C.img = bitmap($("sImg3").value); C.name = $("sImg3").value; render3(); } };
+  $("rB3").oninput = function () { C.b = +$("rB3").value; render3(); };
+  paintable($("cvImg3"), function () { return { img: C.img, p: 0, brush: function () { return 1; }, after: function () { C.name = "free"; render3(); } }; });
+
+  /* ------------------------------ schede ------------------------------ */
+  var cur = "1";
+  function setTab(w) { cur = w; ["1", "2", "3"].forEach(function (k) { $("p" + k).hidden = k !== w; $("tb" + k).classList.toggle("on", k === w); }); renderAll(); }
+  function renderAll() { if (cur === "1") render1(); else if (cur === "2") { syncUI2(); render2(); } else render3(); }
+  ["1", "2", "3"].forEach(function (k) { $("tb" + k).onclick = function () { setTab(k); }; });
+  window.addEventListener("resize", renderAll);
+
+  /* ------------------------------ esperienze ------------------------------ */
+  function reset1(o) { o = o || {}; setTab("1"); A.img = bitmap(o.img || "quadrato"); A.imgName = o.img || "quadrato"; var q = preset(o.pre || "bv"); A.f = q[2].slice(); A.div = q[3]; A.s = o.s || 1; A.p = o.p || 0; A.relu = !!o.relu; A.pool = !!o.pool; A.cur = o.cur || 0; A.all = !!o.all; A.brush = 1; render1(); }
+  function setB(o) { setTab("2"); for (var k in o) B[k] = o[k]; syncUI2(); render2(); }
+  function set3(name, b) { setTab("3"); C.img = bitmap(name); C.name = name; if (b != null) C.b = b; render3(); }
+  function sel() { return Array.prototype.slice.call(arguments); }
+  var EXPS = [
+    { id: "v1", title: "Il filtro scorre e calcola", time: "6 min", desc: "Una finestra 3×3 percorre l’immagine: nove prodotti, una somma, un numero della mappa.", steps: [
+      { t: "L’immagine è una tabella di numeri", x: "Per il computer un’immagine in bianco e nero è una <b>griglia di numeri</b>: <b>0 = bianco</b>, <b>1 = nero</b>. Qui c’è un quadrato disegnato con linee sottili, 10×10 pixel. Puoi cambiarlo cliccando le caselle.", el: "#cvImg", tab: "1", apply: function () { reset1({ pre: "bv" }); } },
+      { t: "Il filtro: nove numeri", x: "Il filtro è una piccola tabella 3×3 di <b>pesi</b>. Questo ha <b>−1 a sinistra, 0 al centro, +1 a destra</b> su ogni riga: dà un numero alto quando a destra c’è più nero che a sinistra. Sono i “bordi verticali”.", el: "#pFilt", tab: "1" },
+      { t: "La finestra parte in alto a sinistra", x: "Il riquadro arancione è la <b>finestra</b>: copre 9 pixel. Nel pannello “Il calcolo” ogni pixel viene moltiplicato per il suo peso e poi si <b>sommano</b> i 9 prodotti. Qui vede quasi solo bianco: c’è un solo pixel nero, in basso a destra, con peso +1. Un prodotto vale 1, gli altri 0, e la somma è <b>1</b>.", el: ["#cvImg", "#pCalc"], tab: "1", btn: "Torna alla prima posizione", apply: function () { stepTo(0); } },
+      { t: "Mettiamo la finestra su un bordo", x: "Sposto la finestra alla posizione 25 (riga 4, colonna 1 della mappa): a destra c’è il <b>lato sinistro del quadrato</b>. I tre pixel neri della colonna di destra valgono 1 e hanno peso +1: tre prodotti da 1, gli altri sono 0. La somma è <b>3</b>.", el: ["#cvImg", "#pCalc"], tab: "1", btn: "Vai alla posizione 25", apply: function () { stepTo(24); } },
+      { t: "Un passo a destra", x: "Premi <b>Passo ▶</b>: la finestra scorre di un pixel. Ora la linea nera è nella colonna <b>centrale</b>, con peso 0, e a destra e a sinistra c’è bianco: tutti i prodotti valgono 0 e la somma è <b>0</b>. Il filtro non “vede” una linea sottile centrata.", el: ["#pScan", "#pCalc"], tab: "1", btn: "Passo ▶", apply: function () { stepTo(25); } },
+      { t: "Ancora un passo: bordo sulla sinistra", x: "Premi di nuovo <b>Passo ▶</b>. Adesso la linea nera è nella colonna di <b>sinistra</b>, dove il peso è −1: tre prodotti da −1 e la somma è <b>−3</b>. Il segno dice da che parte è il nero.", el: ["#pScan", "#pCalc"], tab: "1", btn: "Passo ▶", apply: function () { stepTo(26); } },
+      { t: "La mappa completa", x: "Attiva <b>“Mostra subito tutta la mappa”</b> (o premi Passo ▶ finché serve). La mappa è <b>8×8 = 64</b> numeri, perché 10 − 3 + 1 = 8. A sinistra ci sono valori positivi (<b>+3</b>, arancione), a destra negativi (<b>−3</b>, blu): il filtro ha trovato i due lati verticali del quadrato.", el: "#cvMap", tab: "1", btn: "Mostra tutta la mappa", apply: function () { A.all = true; render1(); } },
+      { t: "Passo 2: salto di due pixel", x: "Metti lo <b>stride (passo) a 2</b>: la finestra salta di 2 pixel alla volta e la mappa si riduce a <b>4×4 = 16</b> numeri, perché ⌊(10 − 3)/2⌋ + 1 = 4. Con il <b>padding 1</b> e passo 1 si aggiunge una cornice di zeri e la mappa resta <b>10×10</b>: provalo tu dal pannello “Far scorrere il filtro”.", el: ["#pScan", "#cvMap"], tab: "1", btn: "Stride = 2", apply: function () { A.s = 2; A.p = 0; A.cur = 0; render1(); } }
+    ] },
+    { id: "v2", title: "Bordi verticali e orizzontali", time: "5 min", desc: "Lo stesso quadrato visto da filtri diversi: ognuno risponde a una direzione.", steps: [
+      { t: "Bordi verticali sul quadrato", x: "La mappa è già completa. Il filtro dei <b>bordi verticali</b> dà <b>+3</b> (arancione) sul lato sinistro del quadrato e <b>−3</b> (blu) sul lato destro. Sul lato alto e su quello basso (lontano dagli angoli) la risposta è <b>0</b>.", el: "#cvMap", tab: "1", apply: function () { reset1({ pre: "bv", all: true }); } },
+      { t: "Dove non c’è nulla, zero", x: "In 24 celle su 64 la mappa è bianca, cioè <b>0</b>: dentro il quadrato e fuori dal quadrato i pixel sono uguali tra loro e le righe di pesi −1 0 +1 si annullano. Un bordo è una <b>differenza</b> tra pixel vicini.", el: "#cvMap", tab: "1" },
+      { t: "Bordi orizzontali", x: "Scegli il preset <b>Bordi orizzontali</b> (−1 sopra, +1 sotto). Ora le risposte forti sono sui lati <b>alto e basso</b>: <b>+3</b> in alto (arancione) e <b>−3</b> in basso (blu). Stessa immagine, filtro diverso, mappa diversa.", el: ["#fPre", "#cvMap"], tab: "1", btn: "Bordi orizzontali", apply: function () { setPreset("bo"); } },
+      { t: "Un bordo netto", x: "Carico l’esempio <b>Bordo netto</b>: metà sinistra nera, metà destra bianca. Con i bordi verticali si accendono solo le <b>due colonne</b> a cavallo del confine, tutte con valore <b>−3</b> (16 celle blu). Il filtro è insensibile all’altezza: il bordo è lo stesso in ogni riga.", el: ["#pImg", "#cvMap"], tab: "1", btn: "Carica il bordo netto", apply: function () { A.img = bitmap("mezzo"); A.imgName = "mezzo"; setPreset("bv"); } },
+      { t: "Bordi diagonali", x: "Carico la <b>diagonale /</b> e il preset <b>Bordi diagonali</b>: si formano due fasce parallele alla linea, una positiva (arancione) e una negativa (blu), con valori <b>+1</b> e <b>−1</b>. La direzione del filtro è accordata a quella del tratto.", el: ["#cvImg", "#cvMap"], tab: "1", btn: "Diagonale e bordi diagonali", apply: function () { A.img = bitmap("diag"); A.imgName = "diag"; setPreset("bd"); } },
+      { t: "Non tutti i filtri cercano bordi", x: "Il preset <b>Sfocatura (media)</b> ha nove pesi uguali e divide per 9: ogni cella è la <b>media</b> di 9 pixel. Sul quadrato i valori vanno da 0 a <b>0,56</b> (5/9): l’immagine si “spalma”. La <b>nitidezza</b> fa l’opposto. Provali, poi disegna tu qualcosa.", el: ["#fPre", "#cvMap"], tab: "1", btn: "Sfocatura sul quadrato", apply: function () { A.img = bitmap("quadrato"); A.imgName = "quadrato"; setPreset("bl"); } }
+    ] },
+    { id: "v3", title: "ReLU e pooling", time: "5 min", desc: "Cancellare i valori negativi e restringere la mappa tenendo i massimi.", steps: [
+      { t: "La mappa grezza", x: "Riparto dai bordi verticali sul quadrato. La mappa ha <b>20 celle positive</b>, <b>20 negative</b> e 24 nulle.", el: "#cvMap", tab: "1", apply: function () { reset1({ pre: "bv", all: true }); } },
+      { t: "ReLU: via i negativi", x: "Attiva <b>ReLU</b>: ogni valore diventa max(0, valore). Le 20 celle blu spariscono e restano le <b>20 positive</b>. La ReLU dice: “mi interessa solo dove il filtro si accende”.", el: ["#optRow", "#cvMap"], tab: "1", btn: "Attiva ReLU", apply: function () { A.relu = true; render1(); } },
+      { t: "Perché serve la ReLU", x: "Senza una funzione non lineare, due strati di somme pesate equivalgono a <b>uno solo</b>: la rete non guadagnerebbe nulla ad avere molti strati. La ReLU è la non linearità più semplice e più usata.", el: "#optRow", tab: "1" },
+      { t: "Max-pooling 2×2", x: "Attiva il <b>max-pooling</b>: la mappa è divisa in quadratini 2×2 e di ciascuno si tiene solo il <b>massimo</b>. Da 8×8 = 64 numeri si passa a <b>4×4 = 16</b>.", el: ["#optRow", "#cvPool"], tab: "1", btn: "Attiva il pooling", apply: function () { A.pool = true; render1(); } },
+      { t: "Leggi una cella ridotta", x: "Nella mappa piccola la cella della <b>seconda riga, prima colonna</b> vale <b>3</b>: è il massimo del suo quadratino 2×2 nella mappa grande, che contiene un 3. In tutto restano <b>8 celle</b> diverse da zero su 16.", el: "#cvPool", tab: "1" },
+      { t: "Cosa si guadagna, cosa si perde", x: "Il pooling riduce i dati e rende la risposta <b>poco sensibile a piccoli spostamenti</b> del tratto (se il tratto si sposta di un pixel, spesso il massimo resta nello stesso quadratino). Si perde però la posizione precisa. Prova con la <b>cifra 7</b> dal menu degli esempi.", el: "#pImg", tab: "1", btn: "Carica la cifra 7", apply: function () { A.img = bitmap("c7"); A.imgName = "c7"; render1(); } }
+    ] },
+    { id: "v4", title: "Perché la convoluzione fa risparmiare parametri", time: "6 min", desc: "Contiamo i pesi di uno strato denso e di uno convoluzionale al crescere dell’immagine.", steps: [
+      { t: "Strato denso su 28×28", x: "Un’immagine <b>28×28</b> ha 784 pixel. Se ognuno è collegato a ciascuno di <b>100 neuroni</b>, servono 784 × 100 = <b>78 400 pesi</b> (78 500 con i 100 bias).", el: ["#cvBar", "#pReadout"], tab: "2", apply: function () { setB({ ni: 2, H: 100, k: 8, cb: 7, rb: 5 }); } },
+      { t: "Strato convoluzionale", x: "Uno strato con <b>8 filtri 3×3</b> ha solo 9 × 8 = <b>72 pesi</b> più 8 bias: <b>80 parametri</b>. Il denso ne ha circa <b>981</b> volte di più.", el: ["#pCtl2", "#pReadout"], tab: "2" },
+      { t: "Immagine 1000×1000", x: "Porta N a <b>1000</b> (un milione di pixel). Il denso con 100 neuroni passa a <b>100 000 000</b> di pesi (100 milioni); lo strato convoluzionale resta a <b>80</b> parametri: il filtro è sempre 3×3.", el: ["#rN", "#pReadout"], tab: "2", btn: "N = 1000", apply: function () { setB({ ni: 8 }); } },
+      { t: "Mille neuroni", x: "Con <b>H = 1000</b> neuroni il denso arriva a <b>1 000 000 000</b> di pesi: un miliardo. Nel grafico la barra si allunga di una tacca (×10), non di tanto: serve la scala logaritmica per vedere numeri così diversi.", el: ["#rH", "#cvBar"], tab: "2", btn: "H = 1000", apply: function () { setB({ H: 1000 }); } },
+      { t: "Più filtri costano poco", x: "Con <b>k = 64</b> filtri il convoluzionale ha 9 × 64 = 576 pesi più 64 bias = <b>640</b> parametri. Resta minuscolo rispetto al denso, e non cresce con la grandezza dell’immagine.", el: ["#rK", "#pReadout"], tab: "2", btn: "k = 64", apply: function () { setB({ k: 64 }); } },
+      { t: "Lo stesso filtro, due posizioni", x: "Il filtro “linea verticale” è sempre lo stesso: due tratti uguali, <b>A</b> e <b>B</b>, producono lo stesso picco <b>6</b> (cerchiato), in due punti diversi della mappa. Il filtro non deve imparare il tratto “due volte”.", el: ["#pInv"], tab: "2", btn: "Riporta B al valore iniziale", apply: function () { setB({ cb: 7, rb: 5 }); } },
+      { t: "Sposta il tratto B", x: "Metto B due colonne più a sinistra e due righe più in alto: i suoi due cerchi si spostano <b>esattamente</b> di tanto e il valore resta 6. È l’<b>invarianza per traslazione</b> (più precisamente, la risposta si sposta insieme al tratto).", el: ["#pInv"], tab: "2", btn: "Sposta B", apply: function () { setB({ cb: 5, rb: 3 }); } },
+      { t: "Pesi condivisi", x: "Ecco il segreto: gli <b>stessi 9 pesi</b> vengono riusati in ogni posizione. Meno parametri da imparare significa meno dati necessari e meno rischio di overfitting.", el: "#pIdee", tab: "2" }
+    ] },
+    { id: "v5", title: "Una piccola rete di filtri", time: "6 min", desc: "Quattro filtri, ReLU e pooling: un voto per tratti verticali, orizzontali e diagonali.", steps: [
+      { t: "Filtri scelti a mano", x: "Questo banco ha 4 filtri “linea”: verticale, orizzontale, diagonale / e diagonale \\. <b>Li abbiamo scritti noi</b>. In una vera rete convoluzionale i numeri dei filtri sono parametri <b>appresi con la backpropagation</b>, minimizzando il costo J(θ): qui facciamo solo vedere cosa può fare un banco di filtri già pronto.", el: ["#pNote3", "#pBank"], tab: "3", apply: function () { set3("croce", -2); } },
+      { t: "La croce", x: "Per la <b>croce</b> si accendono il filtro verticale (voto <b>14</b>) e quello orizzontale (<b>14</b>); i diagonali valgono <b>0</b>. Leggi i voti nel pannello: la rete “dice” che ci sono tratti verticali e orizzontali.", el: ["#pVotes", "#pBank"], tab: "3" },
+      { t: "Il quadrato", x: "Carico il <b>quadrato</b>: voto verticale <b>20</b>, orizzontale <b>20</b>, diagonale <b>0</b>. Stessi tratti della croce, in più quantità (i lati sono più lunghi). Il voto non dice <i>come</i> sono disposti i tratti.", el: ["#pVotes", "#cvImg3"], tab: "3", btn: "Carica il quadrato", apply: function () { set3("quadrato"); } },
+      { t: "La diagonale", x: "Con la <b>diagonale /</b> si accende solo il filtro “diagonale /” (<b>16</b>). Con la diagonale \\ succede il contrario. Verticale e orizzontale: 0.", el: ["#pVotes", "#cvImg3"], tab: "3", btn: "Carica la diagonale /", apply: function () { set3("diag"); } },
+      { t: "La cifra 7", x: "Una <b>cifra 7</b> è fatta di un tratto orizzontale in alto e di un tratto quasi diagonale: voti <b>orizzontale 10</b>, <b>diagonale 6</b>, verticale solo <b>4</b>. È l’idea delle reti: gli strati successivi combinano questi tratti per riconoscere forme.", el: ["#pVotes", "#cvImg3"], tab: "3", btn: "Carica la cifra 7", apply: function () { set3("c7"); } },
+      { t: "Il bias come soglia", x: "Il <b>bias b</b> sposta la soglia della ReLU. Con b = 0 anche i deboli “echi” agli estremi delle linee si accendono: sulla cifra 7 il voto verticale sale da 4 a <b>13</b>. Con b = −2 restano solo le risposte forti.", el: ["#rB3", "#pVotes"], tab: "3", btn: "Metti b = 0", apply: function () { C.b = 0; render3(); } },
+      { t: "Prova tu", x: "Clicca sui pixel per disegnare una tua figura (o scegli la cifra 0) e osserva quali filtri si accendono. Ricorda: in una rete vera i filtri non si scrivono a mano, <b>si apprendono dai dati</b>.", el: "#cvImg3", tab: "3", btn: "Cifra 0, b = −2", apply: function () { set3("c0", -2); } }
+    ] }
+  ];
+  EXPS.forEach(function (e) { e.onShow = function (st) { if (st.tab && cur !== st.tab) setTab(st.tab); }; });
+  window.__cnn = { A: A, B: B, C: C, setTab: setTab, stepTo: stepTo, setPreset: setPreset, reset1: reset1, setB: setB, set3: set3, render1: render1, outSize: outSize, convMap: convMap, bitmap: bitmap, votes: votes, params: params, peaks: peaks, strokeImg: strokeImg, IMGLIST: IMGLIST };
+  Tour.init(EXPS);
+  render1();
+  window.addEventListener("load", renderAll);
+})();
+</script>
+</body>
+</html>

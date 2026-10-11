@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio di regressione e classificazione</title>
+<style>
+:root{--navy:#1F3864;--teal:#0F6E6E;--orange:#C0611B;--blue:#2F6FD0;--ink:#1d2433;--line:#cfd8d8;--panel:#F4F7F7;--bg:#fff;--red:#B3261E;--green:#2E7D32}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--navy);color:#fff;padding:10px 16px}
+header h1{margin:0;font-size:1.2rem;font-weight:600}
+header p{margin:2px 0 0;font-size:.82rem;opacity:.85}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 16px 0;border-bottom:2px solid var(--navy);background:#fff;position:sticky;top:0;z-index:5}
+nav button{border:1px solid var(--line);border-bottom:none;background:var(--panel);color:var(--navy);padding:8px 16px;border-radius:8px 8px 0 0;font:inherit;font-weight:600;cursor:pointer}
+nav button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.page{display:none;padding:14px 16px;max-width:1380px;margin:0 auto}
+.page.on{display:block}
+.layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+@media(max-width:960px){.layout{grid-template-columns:1fr}}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.box h3{margin:0 0 8px;font-size:.88rem;color:var(--teal);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:.85rem;margin:6px 0 2px}
+.ctl{display:grid;grid-template-columns:1fr 62px;gap:8px;align-items:center}
+.ctl output{font-variant-numeric:tabular-nums;text-align:right;font-size:.85rem;color:var(--navy);font-weight:600}
+input[type=range]{width:100%;accent-color:var(--teal)}
+select,input[type=number]{font:inherit;font-size:.88rem;padding:4px 6px;border:1px solid var(--line);border-radius:5px;width:100%;background:#fff}
+.chk{display:flex;gap:6px;align-items:center;margin:4px 0;font-size:.88rem}
+.chk input{margin:0}
+button.b{font:inherit;font-size:.86rem;padding:6px 10px;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:6px;cursor:pointer;margin:3px 3px 0 0}
+button.b:hover{background:#e8eef8}button.b.p{background:var(--navy);color:#fff}button.b.o{background:var(--orange);border-color:var(--orange);color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+canvas{width:100%;display:block;border:1px solid var(--line);border-radius:8px;background:#fff;touch-action:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.cap{font-size:.78rem;color:#4a5568;margin:3px 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:10px 0}
+.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.card small{display:block;color:#4a5568;font-size:.72rem}
+.card b{font-size:1.05rem;color:var(--navy);font-variant-numeric:tabular-nums}
+.card.warn b{color:var(--red)}
+.theta{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0}
+.theta span{background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px 7px;font-size:.8rem;font-variant-numeric:tabular-nums}
+.eq{background:#fff;border:1px dashed var(--teal);border-radius:8px;padding:6px 10px;font-size:.88rem;margin:6px 0;overflow-wrap:anywhere}
+details{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0}
+details summary{cursor:pointer;font-weight:600;color:var(--navy)}
+details ol,details ul{margin:6px 0 2px 18px;padding:0;font-size:.88rem}
+details li{margin:3px 0}
+.sl{margin:2px 0}
+.sl .ctl label{margin:0;font-size:.82rem}
+.alert{color:var(--red);font-weight:600;font-size:.85rem;min-height:1.2em}
+.lg{display:flex;gap:12px;flex-wrap:wrap;font-size:.78rem;margin:2px 0 6px}
+.lg i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+footer{font-size:.75rem;color:#6b7280;padding:10px 16px;text-align:center}
+
+nav .guide{margin-left:auto;border:1px solid var(--orange);border-bottom:none;background:#fff3e6;color:var(--orange)}
+nav .guide:hover{background:var(--orange);color:#fff}
+.exs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:8px}
+button.ex{display:block;text-align:left;font:inherit;background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--ink)}
+button.ex:hover{background:#eef6f6;border-color:var(--teal)}
+button.ex b{display:block;color:var(--navy);font-size:.92rem}
+button.ex span{display:block;font-size:.8rem;color:#4a5568;margin:2px 0}
+button.ex em{font-size:.72rem;color:var(--teal);font-style:normal;font-weight:600}
+#tourOver{display:none;position:fixed;inset:0;z-index:50;pointer-events:none}
+#tourHole{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(15,30,60,.58);outline:3px solid #f2b266;transition:left .25s,top .25s,width .25s,height .25s;animation:tpulse 1.6s infinite}
+@keyframes tpulse{50%{outline-color:#fff}}
+#tourCard{position:fixed;z-index:60;width:min(400px,calc(100vw - 24px));background:#fff;border:1px solid var(--line);border-top:5px solid var(--teal);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:10px 14px 12px;pointer-events:auto}
+#tourKick{font-size:.72rem;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+#tourTitle{margin:3px 0 4px;font-size:1.02rem;color:var(--navy)}
+#tourText{font-size:.9rem;line-height:1.4}
+#tourDots{display:flex;gap:4px;margin:8px 0}
+#tourDots i{flex:1;height:4px;border-radius:2px;background:#d6dede}#tourDots i.ok{background:var(--teal)}#tourDots i.on{background:var(--orange)}
+.tbtn{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tbtn button{font:inherit;font-size:.85rem;padding:6px 10px;border-radius:6px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer}
+.tbtn button:disabled{opacity:.4;cursor:default}
+.tbtn #tourNext{background:var(--navy);color:#fff;margin-left:auto}
+.tbtn #tourDo{background:var(--orange);border-color:var(--orange);color:#fff}
+.tbtn #tourExit{border-color:#aaa;color:#555}
+#tourMenu{display:none;position:fixed;inset:0;z-index:70;background:rgba(15,30,60,.55);align-items:center;justify-content:center;padding:12px}
+#tourMenu .tm{background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:14px 18px}
+#tourMenu h3{margin:0 0 4px;color:var(--navy)}#tourMenu h4{margin:12px 0 4px;color:var(--teal);font-size:.85rem;text-transform:uppercase}
+#tourMenuList .ex{width:100%;margin-bottom:6px}
+#tourMenu .tmh{display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<header>
+<h1>Laboratorio interattivo: dalla regressione lineare alla regressione logistica</h1>
+<p>Matematica, Dati e Intelligenza Artificiale · Prof. Michele Crispoltoni</p>
+</header>
+<nav>
+<button id="tabReg" class="on">1 · Regressione (previsioni)</button>
+<button id="tabCls">2 · Classificazione (regressione logistica)</button>
+<button id="tourMenuBtn" class="guide">🎓 Esperienze guidate</button>
+</nav>
+
+<!-- ===================== PAGINA REGRESSIONE ===================== -->
+<section id="pgReg" class="page on">
+<div class="layout">
+<div>
+ <div class="box"><h3>1 · Dati</h3>
+  <label for="rType">Problema</label>
+  <select id="rType"><option value="1d">Una variabile: curva y = f(x)</option><option value="house">Più variabili: prezzo di una casa</option></select>
+  <div id="r1dOpts">
+   <label for="rFun">Legge “vera” nascosta nei dati</label>
+   <select id="rFun"><option value="line">retta</option><option value="par" selected>parabola</option><option value="cub">cubica</option><option value="sin">onda</option></select>
+  </div>
+  <div class="ctl"><label for="rM">Numero di esempi m</label><output id="rMV"></output></div>
+  <input type="range" id="rM" min="6" max="80" step="1" value="20">
+  <div class="ctl"><label for="rNoise">Rumore (deviazione std.)</label><output id="rNoiseV"></output></div>
+  <input type="range" id="rNoise" min="0" max="3" step="0.1" value="0.8">
+  <label for="rSeed">Seme casuale (stesso seme = stessi dati)</label>
+  <input type="number" id="rSeed" value="7" min="1" max="9999">
+  <div class="chk"><input type="checkbox" id="rTest"><label for="rTest" style="margin:0">Riserva il 30% come dati di test</label></div>
+  <button class="b p" id="rGen">Genera nuovi dati</button>
+  <div class="cap" id="rClickCap">Clic sul grafico = aggiungi un punto tuo.</div>
+ </div>
+ <div class="box"><h3>2 · Modello (feature)</h3>
+  <div id="r1dModel">
+   <div class="ctl"><label for="rDeg">Grado del polinomio (n feature = grado)</label><output id="rDegV"></output></div>
+   <input type="range" id="rDeg" min="1" max="10" step="1" value="2">
+   <div class="cap">h(x) = θ₀ + θ₁u + θ₂u² + … con u = (x−5)/5. Sempre una regressione lineare nei θ.</div>
+  </div>
+  <div id="rHouseModel" style="display:none">
+   <div class="chk"><input type="checkbox" id="rf0" checked><label for="rf0" style="margin:0">x₁ superficie (m²)</label></div>
+   <div class="chk"><input type="checkbox" id="rf1" checked><label for="rf1" style="margin:0">x₂ numero di camere</label></div>
+   <div class="chk"><input type="checkbox" id="rf2" checked><label for="rf2" style="margin:0">x₃ età dell’edificio (anni)</label></div>
+   <div class="chk"><input type="checkbox" id="rf3"><label for="rf3" style="margin:0">x₄ numero civico (inutile!)</label></div>
+   <div class="chk"><input type="checkbox" id="rf4"><label for="rf4" style="margin:0">x₅ superficie² (feature non lineare)</label></div>
+   <div class="cap">Le feature sono standardizzate (media 0, dev. std. 1): feature scaling.</div>
+  </div>
+  <div class="ctl"><label for="rLam">Regolarizzazione λ</label><output id="rLamV"></output></div>
+  <input type="range" id="rLam" min="0" max="6" step="1" value="0">
+ </div>
+ <div class="box"><h3>3 · Parametri θ e allenamento</h3>
+  <div class="chk"><input type="checkbox" id="rAuto" checked><label for="rAuto" style="margin:0"><b>Equazione normale</b> θ = (XᵀX + λL)⁻¹ Xᵀy</label></div>
+  <div class="cap">Spegnila per muovere i pesi a mano o usare la discesa del gradiente.</div>
+  <div id="rSliders"></div>
+  <hr style="border:none;border-top:1px solid var(--line)">
+  <div class="ctl"><label for="rAlpha">Passo di apprendimento α</label><output id="rAlphaV"></output></div>
+  <input type="range" id="rAlpha" min="0" max="7" step="1" value="4">
+  <div class="ctl"><label for="rSpd">Passi per fotogramma</label><output id="rSpdV"></output></div>
+  <input type="range" id="rSpd" min="1" max="200" step="1" value="5">
+  <button class="b o" id="rRun">▶ Discesa del gradiente</button>
+  <button class="b" id="rStep">1 passo</button>
+  <button class="b" id="rZero">θ = 0</button>
+  <div class="alert" id="rAlert"></div>
+ </div>
+</div>
+<div>
+ <div class="lg" id="rLegend"></div>
+ <canvas id="rMain" style="height:380px"></canvas>
+ <div class="cap" id="rMainCap"></div>
+ <div class="cards" id="rCards"></div>
+ <div class="eq" id="rEq"></div>
+ <div class="theta" id="rTheta"></div>
+ <div class="grid2">
+  <div><canvas id="rHist" style="height:230px"></canvas><div class="cap">Costo J(θ) a ogni passo della discesa del gradiente (con λ).</div></div>
+  <div><canvas id="rCx" style="height:230px"></canvas><div class="cap" id="rCxCap"></div></div>
+ </div>
+ <details open><summary>Esperienze guidate: clicca per avviarne una (puoi sempre uscire e continuare da solo)</summary><div class="exs" id="rExps"></div></details>
+</div>
+</div>
+</section>
+
+<!-- ===================== PAGINA CLASSIFICAZIONE ===================== -->
+<section id="pgCls" class="page">
+<div class="layout">
+<div>
+ <div class="box"><h3>1 · Dati (pazienti)</h3>
+  <label for="cSet">Forma dei dati</label>
+  <select id="cSet"><option value="blobs">due nuvole separabili</option><option value="circle">cerchio dentro anello (non lineare)</option><option value="xor">quattro gruppi (XOR)</option></select>
+  <div class="ctl"><label for="cM">Numero di pazienti m</label><output id="cMV"></output></div>
+  <input type="range" id="cM" min="10" max="200" step="1" value="60">
+  <div class="ctl"><label for="cSep">Distanza fra i gruppi</label><output id="cSepV"></output></div>
+  <input type="range" id="cSep" min="0.3" max="3" step="0.1" value="1.6">
+  <div class="ctl"><label for="cSd">Dispersione (sovrapposizione)</label><output id="cSdV"></output></div>
+  <input type="range" id="cSd" min="0.3" max="1.6" step="0.05" value="0.8">
+  <label for="cSeed">Seme casuale</label>
+  <input type="number" id="cSeed" value="3" min="1" max="9999">
+  <button class="b p" id="cGen">Genera nuovi dati</button>
+  <label>Clic sul grafico:</label>
+  <div class="chk"><input type="radio" name="cMode" id="cm0"><label for="cm0" style="margin:0">aggiungi paziente benigno (0)</label></div>
+  <div class="chk"><input type="radio" name="cMode" id="cm1"><label for="cm1" style="margin:0">aggiungi paziente maligno (1)</label></div>
+  <div class="chk"><input type="radio" name="cMode" id="cm2" checked><label for="cm2" style="margin:0">valuta un nuovo paziente (sonda)</label></div>
+ </div>
+ <div class="box"><h3>2 · Feature</h3>
+  <div class="chk"><input type="checkbox" id="cf0" checked><label for="cf0" style="margin:0">x₁ (es. dimensione del tumore)</label></div>
+  <div class="chk"><input type="checkbox" id="cf1" checked><label for="cf1" style="margin:0">x₂ (es. irregolarità del bordo)</label></div>
+  <div class="chk"><input type="checkbox" id="cf2"><label for="cf2" style="margin:0">x₁² / 3</label></div>
+  <div class="chk"><input type="checkbox" id="cf3"><label for="cf3" style="margin:0">x₂² / 3</label></div>
+  <div class="chk"><input type="checkbox" id="cf4"><label for="cf4" style="margin:0">x₁·x₂ / 3</label></div>
+  <div class="cap">Valori già standardizzati. Le feature quadratiche sono divise per 3 per aiutare la discesa del gradiente.</div>
+ </div>
+ <div class="box"><h3>3 · Pesi θ, costo e allenamento</h3>
+  <div id="cSliders"></div>
+  <label for="cCost">Funzione di costo</label>
+  <select id="cCost"><option value="log">log-loss: −y·ln h − (1−y)·ln(1−h)</option><option value="mse">errore quadratico (1/2)(h−y)²</option></select>
+  <div class="ctl"><label for="cLam">Regolarizzazione λ</label><output id="cLamV"></output></div>
+  <input type="range" id="cLam" min="0" max="6" step="1" value="0">
+  <div class="ctl"><label for="cAlpha">Passo di apprendimento α</label><output id="cAlphaV"></output></div>
+  <input type="range" id="cAlpha" min="0" max="7" step="1" value="5">
+  <div class="ctl"><label for="cSpd">Passi per fotogramma</label><output id="cSpdV"></output></div>
+  <input type="range" id="cSpd" min="1" max="100" step="1" value="5">
+  <div class="ctl"><label for="cThr">Soglia di decisione</label><output id="cThrV"></output></div>
+  <input type="range" id="cThr" min="0.05" max="0.95" step="0.05" value="0.5">
+  <button class="b o" id="cRun">▶ Discesa del gradiente</button>
+  <button class="b" id="cStep">1 passo</button>
+  <button class="b" id="cZero">θ = 0</button>
+  <div class="alert" id="cAlert"></div>
+ </div>
+</div>
+<div>
+ <div class="lg"><span><i style="background:var(--blue)"></i>benigno (y = 0), cerchio</span><span><i style="background:var(--orange);border-radius:2px"></i>maligno (y = 1), quadrato</span><span><i style="border:2px solid var(--red);background:#fff"></i>classificato male</span><span>sfondo = probabilità h(x), linea = confine alla soglia</span></div>
+ <canvas id="cMain" style="height:470px"></canvas>
+ <div class="cards" id="cCards"></div>
+ <div class="eq" id="cEq"></div>
+ <div class="grid2">
+  <div><canvas id="cSig" style="height:250px"></canvas><div class="cap">Funzione sigmoide g(z) = 1/(1+e<sup>−z</sup>), con z = θᵀx. Ogni paziente è un punto sulla curva, colorato con la sua classe vera.</div></div>
+  <div><canvas id="cHist" style="height:250px"></canvas><div class="cap">Costo J(θ) durante la discesa del gradiente.</div></div>
+ </div>
+ <div class="box" style="margin-top:12px"><h3>Sonda: un nuovo paziente</h3>
+  <div class="grid2">
+   <div class="sl"><div class="ctl"><label for="pX1">x₁</label><output id="pX1V"></output></div><input type="range" id="pX1" min="-4.5" max="4.5" step="0.1" value="1"></div>
+   <div class="sl"><div class="ctl"><label for="pX2">x₂</label><output id="pX2V"></output></div><input type="range" id="pX2" min="-4.5" max="4.5" step="0.1" value="1"></div>
+  </div>
+  <div class="cards" id="cProbe"></div>
+ </div>
+ <details open><summary>Esperienze guidate: clicca per avviarne una (puoi sempre uscire e continuare da solo)</summary><div class="exs" id="cExps"></div></details>
+</div>
+</div>
+</section>
+<div id="tourOver"><div id="tourHole"></div>
+<div id="tourCard" role="dialog" aria-live="polite" aria-label="Esperienza guidata"><div id="tourKick"></div><h4 id="tourTitle"></h4><div id="tourText"></div><div id="tourDots"></div>
+<div class="tbtn"><button id="tourExit" title="Esci (Esc)">✕ Esci</button><button id="tourPrev">◀ Indietro</button><button id="tourDo"></button><button id="tourNext">Avanti ▶</button></div></div></div>
+<div id="tourMenu"><div class="tm"><div class="tmh"><h3>🎓 Esperienze guidate</h3><button class="b" id="tourMenuClose">✕ Chiudi</button></div>
+<p style="font-size:.88rem;margin:4px 0">Ogni esperienza evidenzia cosa guardare o cliccare e spiega il passaggio. Puoi usare <b>Avanti/Indietro</b> (o le frecce) oppure il pulsante arancione <b>“Fallo per me”</b>. In qualunque momento puoi uscire con <b>Esc</b> e continuare da solo.</p><div id="tourMenuList"></div></div></div>
+<footer>Pagina autonoma: nessun dato lascia il tuo computer. Notazione di Andrew Ng: m esempi, n feature, h<sub>θ</sub>(x) = θᵀx con x₀ = 1.</footer>
+
+<script>
+"use strict";
+/* ---------- utilità ---------- */
+const $=id=>document.getElementById(id);
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(r){let u=0;while(!u)u=r();const v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function fmt(x,d=3){if(!isFinite(x))return"∞";const a=Math.abs(x);if(a!==0&&(a>=1e5||a<1e-4))return x.toExponential(1).replace(".",",");return x.toFixed(d).replace(".",",")}
+function solve(A,b){const n=b.length,M=A.map((r,i)=>r.concat([b[i]]));
+ for(let i=0;i<n;i++){let p=i;for(let r=i+1;r<n;r++)if(Math.abs(M[r][i])>Math.abs(M[p][i]))p=r;[M[i],M[p]]=[M[p],M[i]];
+  const d=M[i][i];if(Math.abs(d)<1e-14)continue;for(let r=i+1;r<n;r++){const f=M[r][i]/d;for(let c=i;c<=n;c++)M[r][c]-=f*M[i][c]}}
+ const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){let s=M[i][n];for(let c=i+1;c<n;c++)s-=M[i][c]*x[c];x[i]=Math.abs(M[i][i])<1e-14?0:s/M[i][i]}return x}
+function dot(a,b){let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s}
+const sig=z=>1/(1+Math.exp(-z));
+function mkCanvas(c){const dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+ if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
+ const g=c.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);return{g,w,h}}
+function niceTicks(a,b,n){const span=b-a;if(!(span>0)||!isFinite(span))return[];const step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0)));
+ const r=step0/mag,step=(r<1.5?1:r<3?2:r<7?5:10)*mag,out=[];for(let v=Math.ceil(a/step)*step,c=0;v<=b+1e-9&&c<60;v+=step,c++)out.push(+v.toFixed(10));return out}
+class Plot{
+ constructor(cv,xr,yr,o={}){const m=o.keep?{g:cv.getContext("2d"),w:cv.clientWidth,h:cv.clientHeight}:mkCanvas(cv);this.g=m.g;this.w=m.w;this.h=m.h;this.l=o.l??46;this.r=o.r??12;this.t=o.t??12;this.b=o.b??34;this.xr=xr;this.yr=yr}
+ X(x){return this.l+(x-this.xr[0])/(this.xr[1]-this.xr[0])*(this.w-this.l-this.r)}
+ Y(y){return this.h-this.b-(y-this.yr[0])/(this.yr[1]-this.yr[0])*(this.h-this.t-this.b)}
+ ix(p){return this.xr[0]+(p-this.l)/(this.w-this.l-this.r)*(this.xr[1]-this.xr[0])}
+ iy(p){return this.yr[0]+(this.h-this.b-p)/(this.h-this.t-this.b)*(this.yr[1]-this.yr[0])}
+ axes(xl,yl){const g=this.g;g.save();g.font="11px system-ui";g.fillStyle="#4a5568";g.strokeStyle="#e3e8e8";g.lineWidth=1;
+  for(const v of niceTicks(this.xr[0],this.xr[1],7)){const x=Math.round(this.X(v))+.5;g.beginPath();g.moveTo(x,this.t);g.lineTo(x,this.h-this.b);g.stroke();g.textAlign="center";g.fillText(fmt(v,Math.abs(v)<1&&v!==0?1:0===v%1?0:1),x,this.h-this.b+14)}
+  for(const v of niceTicks(this.yr[0],this.yr[1],6)){const y=Math.round(this.Y(v))+.5;g.beginPath();g.moveTo(this.l,y);g.lineTo(this.w-this.r,y);g.stroke();g.textAlign="right";g.fillText(fmt(v,Math.abs(v)<1&&v!==0?2:0===v%1?0:1),this.l-4,y+3)}
+  g.strokeStyle="#7a8a8a";g.strokeRect(this.l+.5,this.t+.5,this.w-this.l-this.r,this.h-this.t-this.b);
+  g.fillStyle="#1d2433";g.textAlign="center";if(xl)g.fillText(xl,(this.l+this.w-this.r)/2,this.h-5);
+  if(yl){g.save();g.translate(11,(this.t+this.h-this.b)/2);g.rotate(-Math.PI/2);g.fillText(yl,0,0);g.restore()}g.restore()}
+ clip(){this.g.save();this.g.beginPath();this.g.rect(this.l,this.t,this.w-this.l-this.r,this.h-this.t-this.b);this.g.clip()}
+ unclip(){this.g.restore()}
+}
+function dotShape(g,x,y,r,col,sq,hollow){g.beginPath();if(sq)g.rect(x-r,y-r,2*r,2*r);else g.arc(x,y,r,0,7);
+ if(hollow){g.fillStyle="#fff";g.fill();g.lineWidth=2;g.strokeStyle=col;g.stroke()}else{g.fillStyle=col;g.fill();g.lineWidth=1;g.strokeStyle="#fff";g.stroke()}}
+function lineChart(cv,series,opt){ // series:[{y:[],col,dash,label}]
+ let n=0,lo=Infinity,hi=-Infinity;for(const s of series)for(const v of s.y)if(isFinite(v)){n=Math.max(n,s.y.length);lo=Math.min(lo,v);hi=Math.max(hi,v)}
+ if(!isFinite(lo)){const m=mkCanvas(cv);m.g.fillStyle="#6b7280";m.g.font="13px system-ui";m.g.textAlign="center";m.g.fillText(opt.empty||"",m.w/2,m.h/2);return}
+ if(opt.ymin!==undefined)lo=opt.ymin;if(hi===lo)hi=lo+1;const pad=(hi-lo)*.08;
+ const p=new Plot(cv,[opt.x0??0,Math.max(opt.x1??n-1,(opt.x0??0)+1)],[lo,hi+pad],{l:52});p.axes(opt.xl,opt.yl);p.clip();
+ for(const s of series){const g=p.g;g.beginPath();g.lineWidth=2;g.strokeStyle=s.col;g.setLineDash(s.dash||[]);
+  s.y.forEach((v,i)=>{if(!isFinite(v))return;const x=p.X((opt.x0??0)+i*(opt.dx??1)),y=p.Y(v);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([]);
+  if(s.mark){s.y.forEach((v,i)=>{if(isFinite(v))dotShape(g,p.X((opt.x0??0)+i*(opt.dx??1)),p.Y(v),3.5,s.col)})}}
+ p.unclip();
+ if(opt.legend){const g=p.g;g.font="11px system-ui";let x=p.l+8;for(const s of series){g.fillStyle=s.col;g.fillRect(x,p.t+6,12,3);g.fillStyle="#1d2433";g.textAlign="left";g.fillText(s.label,x+16,p.t+11);x+=22+g.measureText(s.label).width+8}}
+}
+const LAMS=[0,0.01,0.1,1,10,100,1000],ALPHAS=[0.001,0.003,0.01,0.03,0.1,0.3,1,3];
+let running=null; // "reg" | "cls" | null
+
+/* ====================================================== */
+/*                 PAGINA 1 · REGRESSIONE                  */
+/* ====================================================== */
+const R={pts:[],type:"1d",theta:[0,0],hist:[],names:[],sig:"",rangeθ:15,cache:null,seedKey:""};
+const HOUSE=[["x₁ superficie",p=>p.f[0]],["x₂ camere",p=>p.f[1]],["x₃ età",p=>p.f[2]],["x₄ civico",p=>p.f[3]],["x₅ superficie²",p=>p.f[0]*p.f[0]]];
+const FUNS={line:x=>1+0.8*x,par:x=>9-0.36*(x-5)**2,cub:x=>5+0.06*(x-5)**3-0.6*(x-5),sin:x=>5+3*Math.sin(0.9*x)};
+function rGenerate(){
+ const r=rng(+$("rSeed").value*7919+13),m=+$("rM").value,sd=+$("rNoise").value;R.pts=[];
+ if($("rType").value==="1d"){const f=FUNS[$("rFun").value];
+  for(let i=0;i<m;i++){const x=Math.round(r()*1000)/100;R.pts.push({x,y:f(x)+sd*gauss(r),r:r()})}}
+ else{for(let i=0;i<m;i++){const s=Math.round(40+r()*120),cam=Math.max(1,Math.min(6,Math.round(s/35+gauss(r)*0.6))),et=Math.round(r()*60),civ=Math.round(1+r()*119);
+   R.pts.push({f:[s,cam,et,civ],y:30+1.8*s+6*cam-1.2*et+sd*10*gauss(r),r:r()})}}
+ R.hist=[];rRecompute(true)}
+function rIsTrain(p){return !$("rTest").checked||p.r<0.7}
+function rSpec(kind,k){ // restituisce {names,row(p)}
+ if(kind==="1d"){const names=["θ₀ (bias)"];for(let j=1;j<=k;j++)names.push("θ"+sub(j)+" u"+(j>1?sup(j):""));
+  return{names,row:p=>{const u=(p.x-5)/5,r=[1];let v=1;for(let j=1;j<=k;j++){v*=u;r.push(v)}return r}}}
+ const sel=k;const tr=R.pts.filter(rIsTrain);const mu=[],sd=[];
+ for(const j of sel){const v=tr.map(p=>HOUSE[j][1](p)),m=v.reduce((a,b)=>a+b,0)/Math.max(1,v.length);mu.push(m);sd.push(Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/Math.max(1,v.length))||1)}
+ return{names:["θ₀ (bias)"].concat(sel.map(j=>"θ"+sub(j+1)+" "+HOUSE[j][0].slice(0,2))),sel,mu,sd,row:p=>[1].concat(sel.map((j,i)=>(HOUSE[j][1](p)-mu[i])/sd[i]))}}
+function sub(n){return String(n).replace(/\d/g,d=>"₀₁₂₃₄₅₆₇₈₉"[d])}
+function sup(n){return String(n).replace(/\d/g,d=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[d])}
+function rSelFeatures(){const s=[];for(let j=0;j<5;j++)if($("rf"+j).checked)s.push(j);return s}
+function rLam(){return LAMS[+$("rLam").value]}
+function rDesign(spec){const tr=R.pts.filter(rIsTrain),te=R.pts.filter(p=>!rIsTrain(p));
+ return{Xtr:tr.map(spec.row),ytr:tr.map(p=>p.y),Xte:te.map(spec.row),yte:te.map(p=>p.y),tr,te}}
+function ridge(X,y,lam){const p=X[0]?X[0].length:0,A=Array.from({length:p},()=>new Array(p).fill(0)),b=new Array(p).fill(0);
+ for(let i=0;i<X.length;i++)for(let a=0;a<p;a++){b[a]+=X[i][a]*y[i];for(let c=0;c<p;c++)A[a][c]+=X[i][a]*X[i][c]}
+ for(let a=1;a<p;a++)A[a][a]+=lam;return solve(A,b)}
+function jOf(X,y,th){if(!X.length)return NaN;let s=0;for(let i=0;i<X.length;i++)s+=(dot(X[i],th)-y[i])**2;return s/(2*X.length)}
+function rKind(){return $("rType").value==="1d"?["1d",+$("rDeg").value]:["house",rSelFeatures()]}
+function rRecompute(newData){
+ const [kind,k]=rKind(),spec=rSpec(kind,k),D=rDesign(spec),p=spec.names.length;
+ R.cache={spec,D,p,kind};R.names=spec.names;
+ const ols=D.Xtr.length?ridge(D.Xtr,D.ytr,rLam()):new Array(p).fill(0);R.ols=ols;
+ const sig=kind+":"+(kind==="1d"?k:k.join(","))+":"+$("rType").value;
+ if($("rAuto").checked)R.theta=ols.slice();
+ else{while(R.theta.length<p)R.theta.push(0);R.theta.length=p}
+ if(sig!==R.sig||newData){ R.rangeθ=Math.max(kind==="1d"?15:5,Math.max(...ols.map(Math.abs))*1.7+1); if(sig!==R.sig)R.hist=[]; R.sig=sig;rBuildSliders()}
+ rSyncSliders();rDraw()}
+function rBuildSliders(){const box=$("rSliders");box.innerHTML="";R.names.forEach((n,i)=>{const d=document.createElement("div");d.className="sl";
+ d.innerHTML=`<div class="ctl"><label for="rs${i}">${n}</label><output id="rs${i}V"></output></div><input type="range" id="rs${i}" min="${-R.rangeθ}" max="${R.rangeθ}" step="${R.rangeθ/500}" value="0">`;box.appendChild(d);
+ d.querySelector("input").addEventListener("input",e=>{$("rAuto").checked=false;R.theta[i]=+e.target.value;R.hist=[];rSyncSliders();rDraw()})})}
+function rSyncSliders(){const auto=$("rAuto").checked;R.theta.forEach((v,i)=>{const s=$("rs"+i);if(!s)return;s.disabled=auto;s.value=v;$("rs"+i+"V").textContent=fmt(v,2)})}
+function rPredictor(){const c=R.cache;return p=>dot(c.spec.row(p),R.theta)}
+function rObjective(){const c=R.cache,m=c.D.Xtr.length;if(!m)return NaN;let reg=0;for(let i=1;i<R.theta.length;i++)reg+=R.theta[i]**2;return jOf(c.D.Xtr,c.D.ytr,R.theta)+rLam()/(2*m)*reg}
+function rStepGD(){const c=R.cache,X=c.D.Xtr,y=c.D.ytr,m=X.length,p=R.theta.length;if(!m)return;const a=ALPHAS[+$("rAlpha").value],lam=rLam(),g=new Array(p).fill(0);
+ for(let i=0;i<m;i++){const e=dot(X[i],R.theta)-y[i];for(let j=0;j<p;j++)g[j]+=e*X[i][j]}
+ for(let j=0;j<p;j++)R.theta[j]-=a*(g[j]+(j?lam*R.theta[j]:0))/m; // aggiornamento simultaneo
+ const J=rObjective();R.hist.push(J);if(R.hist.length>20000)R.hist.shift();return J}
+function rDraw(){
+ const c=R.cache,is1d=c.kind==="1d",pred=rPredictor(),m=R.pts.length;
+ $("rMV").textContent=$("rM").value;$("rNoiseV").textContent=fmt(+$("rNoise").value,1);$("rDegV").textContent=$("rDeg").value;
+ $("rLamV").textContent=fmt(rLam(),rLam()<1&&rLam()>0?2:0);$("rAlphaV").textContent=fmt(ALPHAS[+$("rAlpha").value],3);$("rSpdV").textContent=$("rSpd").value;
+ $("r1dOpts").style.display=is1d?"":"none";$("r1dModel").style.display=is1d?"":"none";$("rHouseModel").style.display=is1d?"none":"";
+ $("rClickCap").textContent=is1d?"Clic sul grafico = aggiungi un punto tuo.":"Prezzo = 30 + 1,8·sup + 6·camere − 1,2·età + rumore (k€). Le camere dipendono dalla superficie (feature correlate).";
+ const hasTest=c.D.te.length>0;
+ $("rLegend").innerHTML=`<span><i style="background:var(--blue)"></i>dati di training</span>`+(hasTest?`<span><i style="border:2px solid var(--orange);background:#fff"></i>dati di test</span>`:"")+(is1d?`<span><i style="background:var(--teal);border-radius:2px;height:3px;width:14px"></i>modello h<sub>θ</sub>(x)</span>`:`<span>diagonale = previsione perfetta</span>`);
+ // grafico principale
+ if(is1d){const ys=R.pts.map(p=>p.y);let lo=Math.min(0,...ys),hi=Math.max(10,...ys);const pl=new Plot($("rMain"),[0,10],[lo-.5,hi+.5]);pl.axes("x","y");pl.clip();
+  const g=pl.g;if($("rType").value==="1d"){g.beginPath();g.strokeStyle="#c9d3d3";g.lineWidth=2;g.setLineDash([6,5]);const f=FUNS[$("rFun").value];for(let i=0;i<=100;i++){const x=i/10;i?g.lineTo(pl.X(x),pl.Y(f(x))):g.moveTo(pl.X(x),pl.Y(f(x)))}g.stroke();g.setLineDash([])}
+  g.beginPath();g.strokeStyle="#0F6E6E";g.lineWidth=3;for(let i=0;i<=240;i++){const x=i/24,y=pred({x});const X=pl.X(x),Y=pl.Y(Math.max(-1e4,Math.min(1e4,y)));i?g.lineTo(X,Y):g.moveTo(X,Y)}g.stroke();
+  for(const p of R.pts){const yh=pred(p);g.strokeStyle="rgba(179,38,30,.45)";g.lineWidth=1;g.beginPath();g.moveTo(pl.X(p.x),pl.Y(p.y));g.lineTo(pl.X(p.x),pl.Y(yh));g.stroke()}
+  for(const p of R.pts){const tr=rIsTrain(p);dotShape(g,pl.X(p.x),pl.Y(p.y),5,tr?"#2F6FD0":"#C0611B",false,!tr)}
+  pl.unclip();$("rMainCap").textContent="Linea tratteggiata grigia = legge vera (nascosta). Segmenti rossi = errori (h(x⁽ⁱ⁾) − y⁽ⁱ⁾): J è la loro media dei quadrati diviso 2. Clic = nuovo punto."}
+ else{const ys=R.pts.map(p=>p.y),ph=R.pts.map(pred);const lo=Math.min(...ys,...ph),hi=Math.max(...ys,...ph),pad=(hi-lo)*.06+1;
+  const pl=new Plot($("rMain"),[lo-pad,hi+pad],[lo-pad,hi+pad]);pl.axes("prezzo previsto h(x) (k€)","prezzo reale y (k€)");const g=pl.g;pl.clip();
+  g.strokeStyle="#0F6E6E";g.lineWidth=2;g.beginPath();g.moveTo(pl.X(lo-pad),pl.Y(lo-pad));g.lineTo(pl.X(hi+pad),pl.Y(hi+pad));g.stroke();
+  R.pts.forEach((p,i)=>{const tr=rIsTrain(p);dotShape(g,pl.X(ph[i]),pl.Y(p.y),5,tr?"#2F6FD0":"#C0611B",false,!tr)});pl.unclip();
+  $("rMainCap").textContent="Ogni punto è una casa: asse orizzontale = prezzo previsto, verticale = prezzo reale. Più i punti stanno sulla diagonale, migliore è il modello."}
+ // carte
+ const Jtr=jOf(c.D.Xtr,c.D.ytr,R.theta),Jte=jOf(c.D.Xte,c.D.yte,R.theta),Jopt=c.D.Xtr.length?jOf(c.D.Xtr,c.D.ytr,R.ols):NaN;
+ $("rCards").innerHTML=card("m (training)",c.D.Xtr.length)+card("n (feature)",c.p-1)+card("J training",fmt(Jtr,3))+card("J test",hasTest?fmt(Jte,3):"—",hasTest&&Jte>2*Jtr+1)+card("J minimo (eq. normale)",fmt(Jopt,3))+card("‖θ‖² (senza θ₀)",fmt(R.theta.slice(1).reduce((a,b)=>a+b*b,0),2));
+ $("rTheta").innerHTML=R.theta.map((v,i)=>`<span>${R.names[i].split(" ")[0]} = ${fmt(v,3)}</span>`).join("");
+ // equazione
+ let eq="h(x) = "+R.theta.slice(0,5).map((v,i)=>(i?(v<0?" − ":" + "):"")+fmt(i?Math.abs(v):v,2)+(i?"·"+(is1d?"u"+(i>1?sup(i):""):"z"+sub(i)):"")).join("")+(R.theta.length>5?" + …":"");
+ if(!is1d){const sp=c.spec;let b=R.theta[0],terms=[];sp.sel.forEach((j,i)=>{const w=R.theta[i+1]/sp.sd[i];b-=R.theta[i+1]*sp.mu[i]/sp.sd[i];terms.push(`${fmt(w,3)}·${HOUSE[j][0].split(" ")[0]}`)});eq+=`<br><small>(z = feature standardizzata). In unità originali: h(x) = ${fmt(b,2)}${terms.map(t=>" + "+t).join("")} (k€)</small>`}
+ else eq+=`<br><small>con u = (x − 5)/5 (la x è scalata in [−1, 1]: feature scaling)</small>`;
+ $("rEq").innerHTML=eq;
+ // storia
+ lineChart($("rHist"),[{y:R.hist,col:"#C0611B",label:"J(θ)"}],{xl:"passo",yl:"J",empty:"Premi “▶ Discesa del gradiente” (equazione normale spenta)"});
+ // complessità
+ rComplexity()}
+function card(t,v,warn){return`<div class="card${warn?" warn":""}"><small>${t}</small><b>${v}</b></div>`}
+function rComplexity(){const c=R.cache,tr=[],te=[],lam=rLam(),is1d=c.kind==="1d";const K=is1d?10:5;
+ for(let k=1;k<=K;k++){const spec=is1d?rSpec("1d",k):rSpec("house",[0,1,2,3,4].slice(0,k)),D=rDesign(spec);if(!D.Xtr.length){tr.push(NaN);te.push(NaN);continue}
+  const th=ridge(D.Xtr,D.ytr,lam);tr.push(jOf(D.Xtr,D.ytr,th));te.push(D.Xte.length?jOf(D.Xte,D.yte,th):NaN)}
+ $("rCxCap").textContent=is1d?"Costo (senza λ) al variare del grado 1…10, con λ attuale. Con i dati di test si vede la “U”: troppo semplice = underfitting, troppo complesso = overfitting.":"Costo aggiungendo le feature nell’ordine x₁, x₂, x₃, x₄, x₅. Attiva i dati di test per vedere se una feature in più aiuta davvero.";
+ const series=[{y:tr,col:"#2F6FD0",label:"training",mark:true}];if(te.some(isFinite))series.push({y:te,col:"#C0611B",label:"test",mark:true});
+ const cv=$("rCx"),ymax=Math.max(...tr.filter(isFinite));const clipped=series.map(s=>({...s,y:s.y.map(v=>isFinite(v)?Math.min(v,Math.max(ymax*3,1)):v)}));
+ lineChart(cv,clipped,{x0:1,x1:K,xl:is1d?"grado":"numero di feature",yl:"J",legend:true,ymin:0})}
+function rAlert(msg){$("rAlert").textContent=msg||""}
+/* eventi regressione */
+for(const id of["rM","rNoise","rSeed","rFun"])$(id).addEventListener("change",()=>{});
+$("rGen").onclick=()=>{rStop();rGenerate()};
+for(const id of["rM","rNoise","rFun","rSeed"])$(id).addEventListener("input",()=>{if(id==="rSeed"&&!$("rSeed").value)return;rGenerate()});
+$("rType").onchange=()=>{rStop();$("rAuto").checked=true;R.sig="";R.theta=[0,0];rGenerate()};
+$("rTest").onchange=()=>{R.hist=[];rRecompute()};
+$("rDeg").oninput=()=>{R.hist=[];rRecompute()};
+for(let j=0;j<5;j++)$("rf"+j).onchange=()=>{R.hist=[];rRecompute()};
+$("rLam").oninput=()=>{R.hist=[];rRecompute()};
+$("rAuto").onchange=()=>{rStop();R.hist=[];rRecompute()};
+$("rAlpha").oninput=()=>rDraw();$("rSpd").oninput=()=>rDraw();
+$("rZero").onclick=()=>{rStop();$("rAuto").checked=false;R.theta=R.theta.map(()=>0);R.hist=[];rAlert("");rSyncSliders();rDraw()};
+function rStop(){if(running==="reg")running=null;$("rRun").textContent="▶ Discesa del gradiente"}
+$("rRun").onclick=()=>{if(running==="reg"){rStop();return}stopOther("reg");$("rAuto").checked=false;rAlert("");running="reg";$("rRun").textContent="⏸ Pausa";rSyncSliders();loop()};
+$("rStep").onclick=()=>{rStop();$("rAuto").checked=false;rStepGD();rSyncSliders();rDraw()};
+$("rMain").addEventListener("click",e=>{if(R.cache.kind!=="1d")return;const rc=e.target.getBoundingClientRect();
+  const ys=R.pts.map(p=>p.y),lo=Math.min(0,...ys),hi=Math.max(10,...ys);const q=new Plot($("rMain"),[0,10],[lo-.5,hi+.5],{keep:true});
+ const x=q.ix(e.clientX-rc.left),y=q.iy(e.clientY-rc.top);if(x<0||x>10)return;R.pts.push({x:Math.round(x*100)/100,y,r:0});rRecompute();rDraw()});
+
+/* ====================================================== */
+/*               PAGINA 2 · CLASSIFICAZIONE                */
+/* ====================================================== */
+const C={pts:[],theta:[0,0,0,0,0,0],hist:[],probe:{x1:1,x2:1},sig:""};
+const CF=[["x₁",p=>p[0]],["x₂",p=>p[1]],["x₁²/3",p=>p[0]*p[0]/3],["x₂²/3",p=>p[1]*p[1]/3],["x₁·x₂/3",p=>p[0]*p[1]/3]];
+function cSel(){const s=[];for(let j=0;j<5;j++)if($("cf"+j).checked)s.push(j);return s}
+function cRow(p,sel){const r=[1];for(const j of sel)r.push(CF[j][1](p));return r}
+function cGenerate(){const r=rng(+$("cSeed").value*104729+5),m=+$("cM").value,s=+$("cSep").value,sd=+$("cSd").value,set=$("cSet").value;C.pts=[];
+ for(let i=0;i<m;i++){const y=i%2;let x1,x2;
+  if(set==="blobs"){const c=y?s:-s;x1=c+sd*gauss(r);x2=c*0.7+sd*gauss(r)}
+  else if(set==="circle"){const a=r()*2*Math.PI,rad=y?Math.abs(gauss(r))*0.9*sd:(1.2+s*0.6)+gauss(r)*0.4*sd;x1=rad*Math.cos(a);x2=rad*Math.sin(a)}
+  else{const q1=r()<.5?-1:1,q2=y?q1:-q1;x1=q1*(0.5+s*0.7)+sd*0.7*gauss(r);x2=q2*(0.5+s*0.7)+sd*0.7*gauss(r)}
+  C.pts.push({p:[Math.max(-4.4,Math.min(4.4,x1)),Math.max(-4.4,Math.min(4.4,x2))],y})}
+ C.hist=[];cRecompute()}
+function cRecompute(){const sel=cSel(),sig=sel.join(",");if(sig!==C.sig){C.sig=sig;C.hist=[];cBuildSliders(sel)}cSyncSliders();cDraw()}
+function cIdx(sel){return[0].concat(sel.map(j=>j+1))} // indici di θ attivi
+function cBuildSliders(sel){const box=$("cSliders");box.innerHTML="";const idx=cIdx(sel);
+ idx.forEach((k,n)=>{const name=n===0?"θ₀ (bias)":"θ"+sub(n)+" · "+CF[sel[n-1]][0];const d=document.createElement("div");d.className="sl";
+  d.innerHTML=`<div class="ctl"><label for="cs${k}">${name}</label><output id="cs${k}V"></output></div><input type="range" id="cs${k}" min="-10" max="10" step="0.05" value="0">`;box.appendChild(d);
+  d.querySelector("input").addEventListener("input",e=>{C.theta[k]=+e.target.value;C.hist=[];cSyncSliders();cDraw()})})}
+function cSyncSliders(){cIdx(cSel()).forEach(k=>{const s=$("cs"+k);if(!s)return;s.value=C.theta[k];$("cs"+k+"V").textContent=fmt(C.theta[k],2)})}
+function cTheta(sel){return cIdx(sel).map(k=>C.theta[k])}
+function cH(p,sel){return sig(dot(cRow(p,sel),cTheta(sel)))}
+function cCostVal(sel){const m=C.pts.length;if(!m)return NaN;const th=cTheta(sel),mse=$("cCost").value==="mse";let s=0;
+ for(const q of C.pts){const h=sig(dot(cRow(q.p,sel),th));s+=mse?0.5*(h-q.y)**2:-(q.y*Math.log(Math.max(h,1e-12))+(1-q.y)*Math.log(Math.max(1-h,1e-12)))}
+ let reg=0;for(let i=1;i<th.length;i++)reg+=th[i]**2;return s/m+LAMS[+$("cLam").value]/(2*m)*reg}
+function cStepGD(){const sel=cSel(),idx=cIdx(sel),th=cTheta(sel),m=C.pts.length;if(!m)return;const a=ALPHAS[+$("cAlpha").value+0],lam=LAMS[+$("cLam").value],mse=$("cCost").value==="mse",g=new Array(idx.length).fill(0);
+ for(const q of C.pts){const x=cRow(q.p,sel),h=sig(dot(x,th)),e=mse?(h-q.y)*h*(1-h):(h-q.y);for(let j=0;j<g.length;j++)g[j]+=e*x[j]}
+ idx.forEach((k,j)=>{C.theta[k]-=a*(g[j]+(j?lam*C.theta[k]:0))/m});const J=cCostVal(sel);C.hist.push(J);if(C.hist.length>20000)C.hist.shift();return J}
+function cDraw(){
+ const sel=cSel(),th=cTheta(sel),m=C.pts.length,thr=+$("cThr").value;
+ $("cMV").textContent=$("cM").value;$("cSepV").textContent=fmt(+$("cSep").value,1);$("cSdV").textContent=fmt(+$("cSd").value,2);
+ $("cLamV").textContent=fmt(LAMS[+$("cLam").value],LAMS[+$("cLam").value]<1&&LAMS[+$("cLam").value]>0?2:0);$("cAlphaV").textContent=fmt(ALPHAS[+$("cAlpha").value],3);$("cSpdV").textContent=$("cSpd").value;$("cThrV").textContent=fmt(thr,2);
+ $("pX1V").textContent=fmt(C.probe.x1,1);$("pX2V").textContent=fmt(C.probe.x2,1);
+ const pl=new Plot($("cMain"),[-4.5,4.5],[-4.5,4.5]);pl.axes("x₁","x₂");const g=pl.g;
+ // mappa di probabilità
+ const cs=6,nx=Math.floor((pl.w-pl.l-pl.r)/cs),ny=Math.floor((pl.h-pl.t-pl.b)/cs),x0=pl.l,y0=pl.t,cw=(pl.w-pl.l-pl.r)/nx,ch=(pl.h-pl.t-pl.b)/ny;
+ const V=[];for(let j=0;j<=ny;j++){V.push([]);for(let i=0;i<=nx;i++){V[j].push(cH([pl.ix(x0+i*cw),pl.iy(y0+j*ch)],sel))}}
+ {const oc=document.createElement("canvas");oc.width=nx+1;oc.height=ny+1;const ox=oc.getContext("2d"),im=ox.createImageData(nx+1,ny+1);
+  for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const h=V[j][i],a=0.06+0.5*Math.abs(h-0.5)*2,k=4*(j*(nx+1)+i);const c=h>=0.5?[249,115,22]:[47,111,208];im.data[k]=c[0];im.data[k+1]=c[1];im.data[k+2]=c[2];im.data[k+3]=Math.round(255*a)}
+  ox.putImageData(im,0,0);g.save();g.beginPath();g.rect(x0,y0,nx*cw,ny*ch);g.clip();g.imageSmoothingEnabled=true;g.drawImage(oc,0,0,nx+1,ny+1,x0-cw/2,y0-ch/2,(nx+1)*cw,(ny+1)*ch);g.restore()}
+ // confine (marching squares) a h = soglia
+ g.strokeStyle="#1F3864";g.lineWidth=2.5;g.beginPath();
+ for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const v=[V[j][i]-thr,V[j][i+1]-thr,V[j+1][i+1]-thr,V[j+1][i]-thr],px=[x0+i*cw,x0+(i+1)*cw,x0+(i+1)*cw,x0+i*cw],py=[y0+j*ch,y0+j*ch,y0+(j+1)*ch,y0+(j+1)*ch],pts=[];
+  for(let e=0;e<4;e++){const a=e,b=(e+1)%4;if((v[a]>=0)!==(v[b]>=0)){const t=v[a]/(v[a]-v[b]);pts.push([px[a]+t*(px[b]-px[a]),py[a]+t*(py[b]-py[a])])}}
+  if(pts.length>=2){g.moveTo(pts[0][0],pts[0][1]);g.lineTo(pts[1][0],pts[1][1]);if(pts.length===4){g.moveTo(pts[2][0],pts[2][1]);g.lineTo(pts[3][0],pts[3][1])}}}
+ g.stroke();
+ // punti
+ let TP=0,FP=0,FN=0,TN=0;
+ for(const q of C.pts){const h=cH(q.p,sel),pr=h>=thr?1:0;if(pr&&q.y)TP++;else if(pr&&!q.y)FP++;else if(!pr&&q.y)FN++;else TN++;
+  const X=pl.X(q.p[0]),Y=pl.Y(q.p[1]);dotShape(g,X,Y,5,q.y?"#C0611B":"#2F6FD0",!!q.y);if(pr!==q.y){g.strokeStyle="#B3261E";g.lineWidth=2;g.beginPath();g.arc(X,Y,9,0,7);g.stroke()}}
+ // sonda
+ const px=pl.X(C.probe.x1),py=pl.Y(C.probe.x2);g.strokeStyle="#111";g.lineWidth=2;g.beginPath();g.moveTo(px-9,py);g.lineTo(px+9,py);g.moveTo(px,py-9);g.lineTo(px,py+9);g.stroke();g.font="bold 12px system-ui";g.fillStyle="#111";g.textAlign="left";g.fillText("paziente",px+10,py-8);
+ // carte
+ const acc=m?(TP+TN)/m:NaN,prec=TP+FP?TP/(TP+FP):NaN,rec=TP+FN?TP/(TP+FN):NaN,J=cCostVal(sel);
+ $("cCards").innerHTML=card("m pazienti",m)+card("n feature",sel.length)+card("J (costo)",fmt(J,3))+card("accuratezza",fmt(acc*100,0)+"%")+card("precisione",isNaN(prec)?"—":fmt(prec*100,0)+"%")+card("richiamo (sensibilità)",isNaN(rec)?"—":fmt(rec*100,0)+"%")+`<div class="card"><small>vero↓ / previsto→ (0 · 1)</small><b style="font-size:.9rem">0: ${TN} · ${FP}<br>1: ${FN} · ${TP}</b></div>`;
+ const terms=cIdx(sel).map((k,n)=>(n?(C.theta[k]<0?" − ":" + "):"")+fmt(n?Math.abs(C.theta[k]):C.theta[k],2)+(n?"·"+CF[sel[n-1]][0]:""));
+ $("cEq").innerHTML=`z = θᵀx = ${terms.join("")}<br>h(x) = g(z) = 1 / (1 + e<sup>−z</sup>) = P(y = 1 | x). Confine di decisione: h = ${fmt(thr,2)} ⇔ z = ${fmt(Math.log(thr/(1-thr)),2)}.`;
+ // sigmoide
+ const sp=new Plot($("cSig"),[-8,8],[-0.05,1.05]);sp.axes("z = θᵀx","h = g(z)");const sg=sp.g;sp.clip();sg.strokeStyle="#0F6E6E";sg.lineWidth=3;sg.beginPath();for(let i=0;i<=160;i++){const z=-8+i*.1,X=sp.X(z),Y=sp.Y(sig(z));i?sg.lineTo(X,Y):sg.moveTo(X,Y)}sg.stroke();
+ sg.setLineDash([5,4]);sg.strokeStyle="#7a8a8a";sg.lineWidth=1;sg.beginPath();sg.moveTo(sp.X(-8),sp.Y(thr));sg.lineTo(sp.X(8),sp.Y(thr));sg.stroke();sg.setLineDash([]);
+ for(const q of C.pts){const z=dot(cRow(q.p,sel),th);dotShape(sg,sp.X(Math.max(-8,Math.min(8,z))),sp.Y(sig(z)),4,q.y?"#C0611B":"#2F6FD0",!!q.y)}
+ const zp=dot(cRow([C.probe.x1,C.probe.x2],sel),th);sg.strokeStyle="#111";sg.lineWidth=2;const sx=sp.X(Math.max(-8,Math.min(8,zp))),sy=sp.Y(sig(zp));sg.beginPath();sg.moveTo(sx-8,sy);sg.lineTo(sx+8,sy);sg.moveTo(sx,sy-8);sg.lineTo(sx,sy+8);sg.stroke();sp.unclip();
+ // storia
+ lineChart($("cHist"),[{y:C.hist,col:"#C0611B",label:"J(θ)"}],{xl:"passo",yl:"J",empty:"Premi “▶ Discesa del gradiente”"});
+ // sonda
+ const pp=sig(zp);$("cProbe").innerHTML=card("z = θᵀx",fmt(zp,2))+card("p = g(z)",fmt(pp,3))+card("odds p/(1−p)",pp>0.9999?"∞":fmt(pp/(1-pp),2))+card("log-odds = z",fmt(zp,2))+card("decisione",pp>=thr?"maligno (1)":"benigno (0)")}
+/* eventi classificazione */
+for(const id of["cM","cSep","cSd","cSeed"])$(id).addEventListener("input",()=>{if(id==="cSeed"&&!$("cSeed").value)return;cGenerate()});
+$("cSet").onchange=()=>{cStop();C.theta=[0,0,0,0,0,0];cGenerate()};$("cGen").onclick=()=>{cStop();cGenerate()};
+for(let j=0;j<5;j++)$("cf"+j).onchange=()=>{C.hist=[];cRecompute()};
+$("cCost").onchange=()=>{C.hist=[];cDraw()};$("cLam").oninput=cDraw;$("cAlpha").oninput=cDraw;$("cSpd").oninput=cDraw;$("cThr").oninput=cDraw;
+$("pX1").oninput=e=>{C.probe.x1=+e.target.value;cDraw()};$("pX2").oninput=e=>{C.probe.x2=+e.target.value;cDraw()};
+function cStop(){if(running==="cls")running=null;$("cRun").textContent="▶ Discesa del gradiente"}
+$("cRun").onclick=()=>{if(running==="cls"){cStop();return}stopOther("cls");$("cAlert").textContent="";running="cls";$("cRun").textContent="⏸ Pausa";loop()};
+$("cStep").onclick=()=>{cStop();cStepGD();cSyncSliders();cDraw()};
+$("cZero").onclick=()=>{cStop();C.theta=[0,0,0,0,0,0];C.hist=[];$("cAlert").textContent="";cSyncSliders();cDraw()};
+$("cMain").addEventListener("click",e=>{const rc=e.target.getBoundingClientRect(),pl=new Plot($("cMain"),[-4.5,4.5],[-4.5,4.5],{keep:true});
+ const x=pl.ix(e.clientX-rc.left),y=pl.iy(e.clientY-rc.top);if(x<-4.5||x>4.5||y<-4.5||y>4.5)return;
+ if($("cm2").checked){C.probe={x1:Math.round(x*10)/10,x2:Math.round(y*10)/10};$("pX1").value=C.probe.x1;$("pX2").value=C.probe.x2}
+ else C.pts.push({p:[x,y],y:$("cm1").checked?1:0});cDraw()});
+
+/* ---------- ciclo di animazione ---------- */
+function stopOther(w){if(w==="reg"){cStop()}else{rStop()}}
+function loop(){if(!running)return;
+ if(running==="reg"){let J;const n=+$("rSpd").value;for(let i=0;i<n;i++)J=rStepGD();
+  if(!isFinite(J)||J>1e12){rStop();rAlert("Divergenza! α è troppo grande: i θ esplodono. Premi “θ = 0” e riprova con α più piccolo.");R.theta=R.theta.map(v=>isFinite(v)&&Math.abs(v)<1e6?v:0);}
+  rSyncSliders();rDraw()}
+ else{let J;const n=+$("cSpd").value;for(let i=0;i<n;i++)J=cStepGD();
+  if(!isFinite(J)||J>1e9){cStop();$("cAlert").textContent="Divergenza! α troppo grande. Premi “θ = 0”."}
+  cSyncSliders();cDraw()}
+ requestAnimationFrame(loop)}
+/* ---------- schede ---------- */
+function showTab(w){$("pgReg").classList.toggle("on",w==="reg");$("pgCls").classList.toggle("on",w==="cls");$("tabReg").classList.toggle("on",w==="reg");$("tabCls").classList.toggle("on",w==="cls");
+ if(running&&running!==w){running=null;rStop();cStop()}history.replaceState(null,"","#"+w);w==="reg"?rDraw():cDraw()}
+$("tabReg").onclick=()=>showTab("reg");$("tabCls").onclick=()=>showTab("cls");
+window.addEventListener("resize",()=>{$("pgReg").classList.contains("on")?rDraw():cDraw()});
+rGenerate();cGenerate();if(location.hash==="#cls")showTab("cls");
+</script>
+<script>
+"use strict";
+/* ====================================================== */
+/*            ESPERIENZE GUIDATE (tutorial passo-passo)    */
+/* ====================================================== */
+const Tt={
+ v(id,val){const e=$(id);e.value=val;e.dispatchEvent(new Event("input",{bubbles:true}))},
+ s(id,val){const e=$(id);e.value=val;e.dispatchEvent(new Event("input",{bubbles:true}));e.dispatchEvent(new Event("change",{bubbles:true}))},
+ c(id,on){const e=$(id);if(e.checked!==on){e.checked=on;e.dispatchEvent(new Event("change",{bubbles:true}))}},
+ stop(){if(running==="reg")$("rRun").click();else if(running==="cls")$("cRun").click()},
+ run(w){if(running!==w)$(w==="reg"?"rRun":"cRun").click()},
+ train(n){for(let i=0;i<n;i++)cStepGD();cSyncSliders();cDraw()},
+ reg(o){o=Object.assign({type:"1d",fun:"par",m:30,noise:0.8,seed:7,test:false,deg:2,lam:0,alpha:4,auto:true,zero:false,feats:[0,1,2]},o);
+  Tt.stop();rAlert("");showTab("reg");Tt.s("rType",o.type);Tt.s("rFun",o.fun);Tt.v("rM",o.m);Tt.v("rNoise",o.noise);Tt.v("rSeed",o.seed);Tt.c("rTest",o.test);
+  Tt.v("rDeg",o.deg);Tt.v("rLam",o.lam);Tt.v("rAlpha",o.alpha);for(let j=0;j<5;j++)Tt.c("rf"+j,o.feats.includes(j));
+  Tt.c("rAuto",o.auto);if(o.zero)$("rZero").click()},
+ cls(o){o=Object.assign({set:"blobs",m:60,sep:1.6,sd:0.8,seed:3,feats:[0,1],cost:"log",lam:0,alpha:5,thr:0.5,px:1,py:1},o);
+  Tt.stop();$("cAlert").textContent="";showTab("cls");Tt.s("cSet",o.set);Tt.v("cM",o.m);Tt.v("cSep",o.sep);Tt.v("cSd",o.sd);Tt.v("cSeed",o.seed);
+  for(let j=0;j<5;j++)Tt.c("cf"+j,o.feats.includes(j));Tt.s("cCost",o.cost);Tt.v("cLam",o.lam);Tt.v("cAlpha",o.alpha);Tt.v("cThr",o.thr);
+  Tt.v("pX1",o.px);Tt.v("pX2",o.py);$("cZero").click();$("cm2").checked=true}
+};
+const sl=id=>[`label[for="${id}"]`,`#${id}`];
+const EXPS=[
+/* ---------- REGRESSIONE ---------- */
+{id:"r1",page:"reg",title:"Underfitting e modello giusto",time:"5 min",desc:"Una retta non basta per una curva: cosa succede aggiungendo la feature u².",steps:[
+ {t:"I dati",x:"Abbiamo generato 30 punti da una <b>parabola</b> con un po’ di rumore. La linea grigia tratteggiata è la <b>legge vera</b>, che il modello non conosce: deve scoprirla solo dai punti blu. Il modello attuale è una <b>retta</b> (grado 1).",el:"#rMain",apply:()=>Tt.reg({deg:1})},
+ {t:"Una retta tra i punti",x:"La linea verde è il <b>miglior modello possibile di grado 1</b>. I segmenti rossi sono gli errori <i>h(x)−y</i>. Vedi che la retta non riesce a seguire la curvatura.",el:"#rMain"},
+ {t:"Il costo è alto",x:"<b>J training</b> misura gli errori (media dei quadrati diviso 2). Qui è alto: il modello è <b>troppo semplice</b> per i dati. Si chiama <b>underfitting</b>.",el:"#rCards"},
+ {t:"Aggiungiamo una feature",x:"Porta il <b>grado a 2</b>: aggiungi la feature u², cioè il termine θ₂u². Il modello resta <i>lineare nei θ</i>, ma ora disegna una parabola.",el:"#r1dModel",btn:"Porta il grado a 2",apply:()=>Tt.v("rDeg",2)},
+ {t:"Ora la curva segue i dati",x:"La parabola passa in mezzo ai punti e <b>J è crollato</b>. Quello che resta è dovuto al <b>rumore</b>: nessun modello può spiegarlo. Per questo J minimo è circa σ²/2.",el:"#rCards"},
+ {t:"Aumentiamo il rumore",x:"Porta il <b>rumore a 2</b>: i punti si disperdono di più intorno alla parabola.",el:sl("rNoise"),btn:"Rumore = 2",apply:()=>Tt.v("rNoise",2)},
+ {t:"Il modello non è peggiorato",x:"J è risalito, ma il modello è sempre la stessa parabola: è cambiato il <b>livello di rumore</b> nei dati. Il costo minimo possibile dipende dal rumore, non solo dal modello.<br><br><b>Prova tu:</b> cambia la legge vera (retta, cubica, onda) e cerca il grado che funziona meglio.",el:"#rCards"}]},
+{id:"r2",page:"reg",title:"Overfitting: troppo complesso",time:"5 min",desc:"Con pochi dati e grado alto il modello impara il rumore a memoria. Dati di test e curva a U.",steps:[
+ {t:"Pochi dati e un test",x:"Solo 10 punti. Quelli <b>pieni</b> servono a costruire il modello (training), quelli <b>vuoti</b> sono di <b>test</b>: il modello non li vede mai e servono a controllare se funziona su dati nuovi.",el:["#rTest","label[for=\"rTest\"]"],apply:()=>Tt.reg({m:10,noise:1,test:true,deg:2})},
+ {t:"Con grado 2 va bene",x:"Con la parabola <b>J training</b> e <b>J test</b> sono entrambi bassi e dello stesso ordine di grandezza: il modello <b>generalizza</b>.",el:"#rCards"},
+ {t:"Troppa libertà",x:"Porta il <b>grado a 9</b>: 10 parametri θ per pochissimi punti. Il modello ha una libertà enorme.",el:"#r1dModel",btn:"Grado = 9",apply:()=>Tt.v("rDeg",9)},
+ {t:"La curva impazzisce",x:"La curva passa per <b>tutti i punti blu</b> ma oscilla tra l’uno e l’altro e sbaglia sui punti vuoti. Ha imparato il rumore a memoria.",el:"#rMain"},
+ {t:"Training perfetto, test pessimo",x:"<b>J training ≈ 0</b>, ma <b>J test è molto più alto</b>. Guarda anche ‖θ‖²: i pesi sono enormi. Questo è l’<b>overfitting</b>: un modello che sa a memoria il passato non è utile per prevedere il futuro.",el:"#rCards"},
+ {t:"La curva a U",x:"Qui J per ogni grado da 1 a 10. Il training scende sempre; il test scende e poi <b>risale</b>. Il grado giusto è dove il test è minimo.<br><br><b>Prova tu:</b> cambia seme o numero di punti e vedi se la U resta.",el:"#rCx"}]},
+{id:"r3",page:"reg",title:"Regolarizzazione",time:"5 min",desc:"Una penalità sui pesi grandi (λ) cura l’overfitting senza cambiare il grado.",steps:[
+ {t:"Partiamo da un overfitting",x:"Stessi dati dell’esperienza precedente, <b>grado 9</b>, λ = 0: curva selvaggia, J training ≈ 0, J test alto, ‖θ‖² enorme.",el:"#rMain",apply:()=>Tt.reg({m:10,noise:1,test:true,deg:9,lam:0})},
+ {t:"Penalizziamo i pesi grandi",x:"λ moltiplica la penalità <b>λ/(2m)·(θ₁²+θ₂²+…)</b> aggiunta al costo. Porta λ a <b>0,1</b>: il modello ora deve bilanciare errori piccoli e pesi piccoli.",el:sl("rLam"),btn:"λ = 0,1",apply:()=>Tt.v("rLam",2)},
+ {t:"La curva si calma",x:"Il grado è sempre 9, ma la curva è molto più liscia. ‖θ‖² è <b>crollato</b> e <b>J test è sceso</b>. Meno libertà effettiva, migliore generalizzazione.",el:["#rMain","#rCards"]},
+ {t:"Troppa penalità",x:"Porta λ a <b>1000</b> (l’ultimo valore).",el:sl("rLam"),btn:"λ = 1000",apply:()=>Tt.v("rLam",6)},
+ {t:"Underfitting",x:"Ora i pesi sono quasi zero e la curva è <b>quasi piatta</b>: J è alto sia in training sia in test. λ è un compromesso: non troppo piccolo (overfitting), non troppo grande (underfitting).<br><br><b>Prova tu:</b> trova il λ che dà J test minimo.",el:["#rMain","#rCards"]}]},
+{id:"r4",page:"reg",title:"Discesa del gradiente e passo α",time:"6 min",desc:"Guarda i θ cambiare passo dopo passo. Cosa succede con α troppo grande.",steps:[
+ {t:"Partiamo da θ = 0",x:"Abbiamo spento l’equazione normale e azzerato tutti i θ: il modello predice 0 ovunque e J è altissimo. La discesa del gradiente deve trovare i θ <b>passo dopo passo</b>.",el:"#rMain",apply:()=>Tt.reg({deg:2,alpha:4,auto:false,zero:true})},
+ {t:"Avvia la discesa",x:"Premi <b>▶ Discesa del gradiente</b>. A ogni passo ogni θ cambia di −α·∂J/∂θ, tutti insieme (aggiornamento simultaneo).",el:"#rRun",btn:"Avvia ▶",apply:()=>Tt.run("reg")},
+ {t:"J scende e la curva si adatta",x:"Guarda il grafico del costo: J scende molto in fretta all’inizio, poi sempre più lentamente. Contemporaneamente la curva si avvicina ai punti.",el:["#rHist","#rMain"]},
+ {t:"Pausa",x:"Premi <b>Pausa</b> per fermare l’allenamento.",el:"#rRun",btn:"Pausa ⏸",apply:()=>Tt.stop()},
+ {t:"Quasi come la soluzione esatta",x:"Confronta <b>J training</b> con <b>J minimo</b> (quello dell’equazione normale): sono quasi uguali. La discesa del gradiente arriva allo stesso risultato, solo per approssimazioni successive.",el:"#rCards"},
+ {t:"Un passo troppo lungo",x:"Porta <b>α a 3</b> (massimo), azzera θ e ripremi ▶.",el:sl("rAlpha"),btn:"α = 3 e riparti",apply:()=>{Tt.stop();Tt.v("rAlpha",7);$("rZero").click();Tt.run("reg")}},
+ {t:"Divergenza!",x:"Con α troppo grande ogni passo <b>scavalca il minimo</b> e atterra più in alto: i θ oscillano con ampiezza crescente e J esplode. Per questo α va scelto con cura (provalo 0,001 / 0,1 / 3).",el:["#rAlert","#rHist"]},
+ {t:"Ripristina",x:"Rimetti <b>α a 0,1</b> e riattiva l’equazione normale per tornare a una situazione normale.",el:sl("rAlpha"),btn:"Ripristina",apply:()=>{Tt.stop();rAlert("");Tt.v("rAlpha",4);Tt.c("rAuto",true)}}]},
+{id:"r5",page:"reg",title:"Più feature: il prezzo di una casa",time:"6 min",desc:"Quali feature servono? Una feature inutile non migliora il test.",steps:[
+ {t:"Previsto contro reale",x:"Ogni punto è una casa. Orizzontale: prezzo <b>previsto</b> dal modello; verticale: prezzo <b>reale</b>. Più i punti stanno sulla diagonale, meglio funziona. Feature usate: superficie, camere, età.",el:"#rMain",apply:()=>Tt.reg({type:"house",m:40,noise:1.5,seed:7,test:true,feats:[0,1,2]})},
+ {t:"I pesi θ",x:"Ogni feature ha un peso: il bias θ₀ è il prezzo di base, θ₁ l’effetto della superficie, ecc. Le feature sono standardizzate, quindi i pesi si confrontano fra loro. Sotto l’equazione trovi anche i pesi in unità originali (€ per m²…).",el:["#rEq","#rTheta"]},
+ {t:"Togliamo la superficie",x:"Togli la spunta a <b>x₁ superficie</b>.",el:["#rf0","label[for=\"rf0\"]"],btn:"Togli x₁",apply:()=>Tt.c("rf0",false)},
+ {t:"J cresce molto",x:"Senza la superficie <b>J sale tantissimo</b>: era la feature più informativa. Camere ed età da sole non bastano a spiegare il prezzo.",el:"#rCards"},
+ {t:"Rimettiamola, aggiungiamo una feature inutile",x:"Rimetti x₁ e aggiungi <b>x₄ numero civico</b>, che con il prezzo non c’entra nulla.",el:"#rHouseModel",btn:"x₁ sì, x₄ sì",apply:()=>{Tt.c("rf0",true);Tt.c("rf3",true)}},
+ {t:"Una feature inutile non aiuta",x:"Confronta <b>J test</b>: non migliora (può addirittura peggiorare un po’). Il training invece scende leggermente per puro caso. Le feature inutili aggiungono solo rumore.",el:"#rCards"},
+ {t:"Aggiungere feature una alla volta",x:"Qui J per i modelli con 1, 2, 3, 4, 5 feature (in ordine x₁…x₅). Training sempre in discesa; il test smette di migliorare quando le feature non servono più.<br><br><b>Prova tu:</b> attiva x₅ (superficie²) e guarda cosa succede.",el:"#rCx"}]},
+/* ---------- CLASSIFICAZIONE ---------- */
+{id:"c1",page:"cls",title:"Bias e pesi a mano",time:"6 min",desc:"Costruisci il confine di decisione muovendo θ₀, θ₁, θ₂.",steps:[
+ {t:"I pazienti",x:"Ogni punto è un paziente con due misure (x₁, x₂). <b>Cerchi blu = benigni, quadrati arancioni = maligni</b>. Lo sfondo mostra la probabilità <i>h(x)</i> che sia maligno. Con tutti i pesi a 0 è <b>0,5 ovunque</b>: il modello non sa niente.",el:"#cMain",apply:()=>Tt.cls({})},
+ {t:"Dai un peso alle misure",x:"Metti <b>θ₁ = 1</b> e <b>θ₂ = 1</b>. Ora z = x₁ + x₂ e il modello dice “più le misure sono grandi, più è probabile che sia maligno”.",el:["#cSliders"],btn:"θ₁ = θ₂ = 1",apply:()=>{Tt.v("cs1",1);Tt.v("cs2",1)}},
+ {t:"È comparso il confine",x:"La linea scura è il <b>confine di decisione</b>: dove h = 0,5, cioè θ₀+θ₁x₁+θ₂x₂ = 0. È una retta. Guarda l’<b>accuratezza</b> e i punti cerchiati di rosso (classificati male).",el:["#cMain","#cCards"]},
+ {t:"La sigmoide",x:"Ogni paziente ha un valore z = θᵀx e una probabilità h = g(z). Qui li vedi sulla curva sigmoide, colorati con la <b>classe vera</b>. Se il modello è buono i blu stanno a sinistra, gli arancioni a destra.",el:"#cSig"},
+ {t:"Muovi il bias θ₀",x:"Porta <b>θ₀ a 3</b>: il bias non guarda le misure, aggiunge un valore fisso a z.",el:sl("cs0"),btn:"θ₀ = 3",apply:()=>Tt.v("cs0",3)},
+ {t:"Il confine trasla",x:"Il confine si è <b>spostato</b> (traslato) verso i benigni: ora molti benigni sono classificati come maligni e l’accuratezza è scesa. Il bias <b>trasla</b> il confine.",el:["#cMain","#cCards"]},
+ {t:"Cambia i pesi: il confine ruota",x:"Rimetti θ₀ a 0 e prova <b>θ₁ = 0,2</b> e <b>θ₂ = 3</b>: ora il modello guarda quasi solo x₂.",el:["#cSliders"],btn:"θ₀=0, θ₁=0,2, θ₂=3",apply:()=>{Tt.v("cs0",0);Tt.v("cs1",0.2);Tt.v("cs2",3)}},
+ {t:"I pesi ruotano il confine",x:"Il confine è ora quasi <b>orizzontale</b>. I pesi <b>ruotano</b> il confine; più sono grandi, più la transizione tra blu e arancione è netta.<br><br><b>Prova tu:</b> cerca a mano l’accuratezza più alta, poi premi ▶ e confronta.",el:"#cMain"}]},
+{id:"c2",page:"cls",title:"L’allenamento: il costo scende",time:"5 min",desc:"La discesa del gradiente trova da sola pesi e confine.",steps:[
+ {t:"Partiamo da zero",x:"Tutti i pesi sono a 0: h = 0,5 per tutti. Il costo (log-loss) vale <b>0,693 = ln 2</b>: è il costo di chi tira a indovinare.",el:"#cCards",apply:()=>Tt.cls({})},
+ {t:"Avvia l’allenamento",x:"Premi <b>▶ Discesa del gradiente</b>. A ogni passo i pesi cambiano in modo da ridurre il costo.",el:"#cRun",btn:"Avvia ▶",apply:()=>Tt.run("cls")},
+ {t:"Osserva",x:"Il <b>costo</b> scende, il <b>confine</b> si assesta fra i due gruppi, i colori dello sfondo si fanno più netti. Guarda anche gli slider dei pesi che si muovono da soli.",el:["#cMain","#cHist"]},
+ {t:"Pausa",x:"Ferma l’allenamento.",el:"#cRun",btn:"Pausa ⏸",apply:()=>Tt.stop()},
+ {t:"Risultato",x:"I pesi sono cresciuti: il modello è diventato <b>sicuro</b>. L’accuratezza è alta, il costo è molto più basso di 0,693. Nella sigmoide i punti si sono separati.<br><br><b>Prova tu:</b> aumenta la <i>distanza fra i gruppi</i> o la <i>dispersione</i> e riallena: cambiano i pesi?",el:["#cCards","#cSig"]}]},
+{id:"c3",page:"cls",title:"Perché il logaritmo nel costo",time:"6 min",desc:"Confronto fra log-loss e errore quadratico partendo da un modello sicuro e sbagliato.",steps:[
+ {t:"Un modello sicuro… e sbagliato",x:"Abbiamo messo i pesi a θ = (0, −4, −4): il modello è <b>molto sicuro</b> ma dà la risposta <b>opposta</b> a quella giusta. Lo sfondo è l’inverso della realtà.",el:"#cMain",apply:()=>{Tt.cls({sd:0.8,sep:1.6});Tt.v("cs1",-4);Tt.v("cs2",-4)}},
+ {t:"Il costo è enorme",x:"Con la <b>log-loss</b> un errore sicuro costa moltissimo (−ln 0,01 ≈ 4,6 per ogni paziente). Guarda il valore di J.",el:"#cCards"},
+ {t:"Allena con la log-loss",x:"Alleniamo il modello per 100 passi con la log-loss.",el:"#cRun",btn:"Allena 100 passi",apply:()=>{Tt.train(100)}},
+ {t:"Il modello si riprende",x:"La log-loss ha un gradiente <b>forte</b> proprio quando il modello è sicuro e sbagliato: il modello recupera in fretta. Guarda J, i pesi e l’accuratezza.",el:["#cCards","#cMain"]},
+ {t:"Stesso punto di partenza, errore quadratico",x:"Ora cambiamo la funzione di costo in <b>errore quadratico</b> (½(h−y)²), rimettiamo θ = (0, −4, −4) e alleniamo di nuovo 100 passi.",el:"#cCost",btn:"Costo quadratico",apply:()=>{Tt.s("cCost","mse");$("cZero").click();Tt.v("cs1",-4);Tt.v("cs2",-4);Tt.train(100)}},
+ {t:"Il modello resta bloccato",x:"Con l’errore quadratico sulla sigmoide il modello <b>quasi non si muove</b>: quando h è vicino a 0 o a 1 la sigmoide è piatta e il gradiente (h−y)·h(1−h) è quasi zero. Una funzione di costo con il <b>logaritmo</b> “cancella” questa piattezza ed è convessa, quindi senza minimi locali.<br><br><b>Prova tu:</b> riallena con ▶ e vedi quanti passi servono.",el:["#cCards","#cMain"]},
+ {t:"Ripristina",x:"Rimettiamo la log-loss.",el:"#cCost",btn:"Log-loss",apply:()=>{Tt.s("cCost","log");$("cZero").click()}}]},
+{id:"c4",page:"cls",title:"Non linearità: nuove feature",time:"6 min",desc:"Quando una retta non basta, si aggiungono feature come x₁² e x₂².",steps:[
+ {t:"Un cerchio dentro un anello",x:"Qui i maligni stanno <b>al centro</b> e i benigni <b>tutto intorno</b>. Nessuna retta può separarli.",el:"#cMain",apply:()=>Tt.cls({set:"circle",m:80,sep:1.6,sd:0.8})},
+ {t:"Alleniamo con x₁ e x₂",x:"Alleniamo il modello solo con le due misure x₁ e x₂ (300 passi).",el:"#cRun",btn:"Allena 300 passi",apply:()=>Tt.train(300)},
+ {t:"Una retta non basta",x:"Guarda l’<b>accuratezza</b>: resta bassa (circa 70%) e allenando di più non migliora. Qualunque retta taglia il piano in due semipiani, ma i maligni sono in mezzo.",el:["#cMain","#cCards"]},
+ {t:"Aggiungiamo x₁² e x₂²",x:"Accendi le feature <b>x₁²/3</b> e <b>x₂²/3</b>. Il modello resta una regressione logistica lineare nei θ, ma le feature ora sono non lineari.",el:"#cSliders",btn:"Aggiungi x₁², x₂²",apply:()=>{Tt.c("cf2",true);Tt.c("cf3",true)}},
+ {t:"Riallena",x:"Azzera i pesi e riallena per 600 passi.",el:"#cRun",btn:"Azzera e allena",apply:()=>{$("cZero").click();Tt.train(600)}},
+ {t:"Il confine è una circonferenza",x:"Con z = θ₀ + θ₁x₁ + θ₂x₂ + θ₃x₁²/3 + θ₄x₂²/3 il confine <b>z = 0</b> è una circonferenza (ellisse). Accuratezza alta!<br><br>È l’idea chiave del deep learning: <b>inventare feature adatte</b>. Le reti neurali le costruiscono da sole.<br><br><b>Prova tu:</b> con i “quattro gruppi” (XOR) quale feature serve? (Suggerimento: x₁·x₂).",el:["#cMain","#cCards"]}]},
+{id:"c5",page:"cls",title:"La soglia: precisione e richiamo",time:"5 min",desc:"Spostare la soglia cambia il tipo di errori. In medicina quale conta di più?",steps:[
+ {t:"Un modello allenato, dati che si sovrappongono",x:"Abbiamo allenato il modello su pazienti con misure che si sovrappongono: qualche errore è inevitabile. La soglia è 0,5: maligno se h ≥ 0,5.",el:"#cMain",apply:()=>{Tt.cls({sd:1.1,sep:1.2,m:80});Tt.train(400)}},
+ {t:"Matrice di confusione",x:"Nella scheda a destra: righe = classe vera, colonne = classe prevista (0 · 1). <b>Precisione</b> = fra i previsti maligni, quanti lo sono davvero. <b>Richiamo</b> = fra i veri maligni, quanti ne troviamo.",el:"#cCards"},
+ {t:"Soglia bassa: più prudenti",x:"Porta la <b>soglia a 0,2</b>: segnaliamo come maligno anche chi ha solo il 20% di probabilità.",el:sl("cThr"),btn:"Soglia = 0,2",apply:()=>Tt.v("cThr",0.2)},
+ {t:"Più richiamo, meno precisione",x:"Il confine si sposta verso i benigni: <b>troviamo più maligni</b> (il richiamo sale) ma abbiamo anche più falsi allarmi (la precisione scende).",el:["#cMain","#cCards"]},
+ {t:"Soglia alta: più severi",x:"Ora porta la <b>soglia a 0,8</b>.",el:sl("cThr"),btn:"Soglia = 0,8",apply:()=>Tt.v("cThr",0.8)},
+ {t:"Meno falsi allarmi, ma tumori mancati",x:"Il richiamo è sceso: <b>alcuni tumori maligni non vengono segnalati</b>. In medicina quale errore è più grave, un falso allarme o un tumore mancato? La soglia si sceglie in base al costo degli errori, non solo alla matematica.",el:["#cMain","#cCards"]}]},
+{id:"c6",page:"cls",title:"La sonda: z, probabilità, odds",time:"4 min",desc:"Valuta un paziente nuovo e leggi come z diventa probabilità.",steps:[
+ {t:"Un modello allenato",x:"Il modello è allenato sulle due nuvole. La <b>croce nera</b> sulla mappa è un <b>paziente nuovo</b> che non è nei dati.",el:"#cMain",apply:()=>{Tt.cls({px:-2,py:-1.5});Tt.train(300)}},
+ {t:"Paziente tra i benigni",x:"Il paziente è nella zona dei benigni. Guarda il riquadro <b>Sonda</b>: z è negativo e la probabilità p = g(z) è bassa.",el:["#pX1V","#cProbe"]},
+ {t:"Spostiamolo",x:"Sposta il paziente verso i maligni, con x₁ = 2 e x₂ = 1,5 (puoi anche cliccare sulla mappa).",el:["label[for=\"pX1\"]","#pX1","label[for=\"pX2\"]","#pX2"],btn:"Sposta il paziente",apply:()=>{Tt.v("pX1",2);Tt.v("pX2",1.5)}},
+ {t:"Probabilità alta",x:"Ora z è positivo e <b>p è vicina a 1</b>. Le odds p/(1−p) sono enormi: il paziente è “molte volte” più probabile come maligno che come benigno.",el:"#cProbe"},
+ {t:"Sul confine",x:"Mettilo vicino al centro (x₁ = 0, x₂ = 0).",el:["label[for=\"pX1\"]","#pX1","label[for=\"pX2\"]","#pX2"],btn:"Centro",apply:()=>{Tt.v("pX1",0);Tt.v("pX2",0)}},
+ {t:"z = 0 ⇒ p = 0,5 ⇒ odds = 1",x:"Vicino al confine z è prossimo a 0, p prossima a 0,5 e le odds prossime a 1 (leggi i valori esatti nel riquadro). Guarda anche che <b>log-odds = z</b>: la logistica è lineare sul log-odds. È il motivo per cui nella sigmoide c’è l’esponenziale.",el:["#cProbe","#cSig"]}]}
+];
+
+/* ---------- motore ---------- */
+const Tour={exp:null,i:0,done:{},raf:0};
+function tEl(){return{card:$("tourCard"),hole:$("tourHole")}}
+function tRect(el){
+ const list=(Array.isArray(el)?el:[el]).map(s=>document.querySelector(s)).filter(Boolean);let r=null;
+ for(const e of list){const b=e.getBoundingClientRect();if(!b.width&&!b.height)continue;
+  r=r?{left:Math.min(r.left,b.left),top:Math.min(r.top,b.top),right:Math.max(r.right,b.right),bottom:Math.max(r.bottom,b.bottom)}:{left:b.left,top:b.top,right:b.right,bottom:b.bottom}}
+ return r}
+function tPlace(){
+ if(!Tour.exp)return;const st=Tour.exp.steps[Tour.i],{card,hole}=tEl(),W=innerWidth,H=innerHeight;
+ let r=tRect(st.el);const cw=card.offsetWidth,ch=card.offsetHeight;
+ if(!r){hole.style.cssText=`left:${W/2}px;top:${H/2}px;width:0;height:0;outline:none`;card.style.left=Math.max(12,(W-cw)/2)+"px";card.style.top=Math.max(12,(H-ch)/2)+"px";return}
+ const p=6,L=r.left-p,T=r.top-p,Wd=r.right-r.left+2*p,Hh=r.bottom-r.top+2*p;
+ hole.style.cssText=`left:${L}px;top:${T}px;width:${Wd}px;height:${Hh}px`;
+ let x=Math.min(Math.max(12,L),W-cw-12),y;
+ if(H-(T+Hh)>=ch+16)y=T+Hh+12;else if(T>=ch+16)y=T-ch-12;else{y=H-ch-12;x=W-cw-12}
+ card.style.left=x+"px";card.style.top=Math.max(8,y)+"px"}
+function tLoop(){tPlace();Tour.raf=requestAnimationFrame(tLoop)}
+function tShow(){
+ const e=Tour.exp,st=e.steps[Tour.i],{card}=tEl(),n=e.steps.length;
+ if(e.page!==(($("pgCls").classList.contains("on"))?"cls":"reg"))showTab(e.page);
+ const first=document.querySelector(Array.isArray(st.el)?st.el[0]:st.el);
+ if(first){const b=first.getBoundingClientRect();const tall=b.height>innerHeight*0.55;
+  if(b.top<70||b.bottom>innerHeight-10||tall)first.scrollIntoView({block:tall?"start":"center"})}
+ $("tourKick").textContent=`${e.title} · passo ${Tour.i+1} di ${n}`;
+ $("tourTitle").textContent=st.t;$("tourText").innerHTML=st.x;
+ $("tourDots").innerHTML=e.steps.map((_,k)=>`<i class="${k===Tour.i?"on":k<Tour.i?"ok":""}"></i>`).join("");
+ $("tourPrev").disabled=Tour.i===0;$("tourDo").style.display=st.apply&&Tour.i>0?"":"none";$("tourDo").textContent=st.btn?"👉 "+st.btn:"👉 Fallo per me";
+ $("tourNext").textContent=Tour.i===n-1?"Fine ✓":"Avanti ▶";
+ tPlace()}
+function tApply(st){try{st.apply&&st.apply()}catch(err){console.error(err)}}
+function tourStart(id){
+ const e=EXPS.find(x=>x.id===id);if(!e)return;$("tourMenu").style.display="none";Tour.exp=e;Tour.i=0;
+ $("tourOver").style.display="block";tApply(e.steps[0]);Tour.done={0:true};
+ cancelAnimationFrame(Tour.raf);tShow();tLoop();$("tourNext").focus()}
+function tourEnd(){Tour.exp=null;cancelAnimationFrame(Tour.raf);$("tourOver").style.display="none";Tt.stop()}
+function tourNext(){const e=Tour.exp;if(!e)return;const st=e.steps[Tour.i];
+ if(st.apply&&Tour.i>0&&!Tour.done[Tour.i]){tApply(st)}Tour.done[Tour.i]=true;
+ if(Tour.i>=e.steps.length-1){tourEnd();return}Tour.i++;tShow()}
+function tourPrev(){if(Tour.exp&&Tour.i>0){Tour.i--;tShow()}}
+function tourDo(){const st=Tour.exp.steps[Tour.i];tApply(st);Tour.done[Tour.i]=true}
+function tourMenu(){const m=$("tourMenu");const html=["reg","cls"].map(pg=>`<h4>${pg==="reg"?"Pagina 1 · Regressione":"Pagina 2 · Classificazione"}</h4>`+EXPS.filter(x=>x.page===pg).map(x=>`<button class="ex" data-id="${x.id}"><b>${x.title}</b><span>${x.desc}</span><em>${x.time} · ${x.steps.length} passi</em></button>`).join("")).join("");
+ $("tourMenuList").innerHTML=html;m.style.display="flex";
+ m.querySelectorAll(".ex").forEach(b=>b.onclick=()=>tourStart(b.dataset.id))}
+function tourLists(){for(const pg of["reg","cls"]){$(pg==="reg"?"rExps":"cExps").innerHTML=EXPS.filter(x=>x.page===pg).map(x=>`<button class="ex" data-id="${x.id}"><b>▶ ${x.title}</b><span>${x.desc}</span><em>${x.time} · ${x.steps.length} passi</em></button>`).join("");
+  $(pg==="reg"?"rExps":"cExps").querySelectorAll(".ex").forEach(b=>b.onclick=()=>tourStart(b.dataset.id))}}
+$("tourNext").onclick=tourNext;$("tourPrev").onclick=tourPrev;$("tourDo").onclick=tourDo;$("tourExit").onclick=tourEnd;
+$("tourMenuBtn").onclick=tourMenu;$("tourMenuClose").onclick=()=>$("tourMenu").style.display="none";
+$("tourMenu").addEventListener("click",e=>{if(e.target.id==="tourMenu")$("tourMenu").style.display="none"});
+document.addEventListener("keydown",e=>{const tag=(e.target.tagName||"").toLowerCase();
+ if(e.key==="Escape"){if(Tour.exp)tourEnd();$("tourMenu").style.display="none";return}
+ if(!Tour.exp||tag==="input"||tag==="select"||tag==="textarea")return;
+ if(e.key==="ArrowRight"){e.preventDefault();tourNext()}else if(e.key==="ArrowLeft"){e.preventDefault();tourPrev()}});
+tourLists();
+</script>
+<script>(function(){var h=location.hash.replace("#","");if(!h)return;setTimeout(function(){try{if(h.charAt(0)==="c"&&typeof showTab==="function")showTab("cls");tourStart(h)}catch(e){console.error(e)}},300)})();</script>
+</body>
+</html>

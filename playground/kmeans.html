@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K-means: raggruppare i dati</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>K-means: raggruppare senza etichette</h1><p>l’algoritmo trova da solo i gruppi: assegna i punti ai centroidi e sposta i centroidi</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+
+<!-- ============ KNN ============ -->
+<main class="app" id="pKnn" hidden>
+  <section>
+    <canvas id="cvK" width="640" height="640" aria-label="Piano con i punti delle due classi, il punto da classificare e i suoi vicini"></canvas>
+    <p class="hint"><span class="sw" style="background:#1f77b4"></span>classe A &nbsp; <span class="sw" style="background:#ff7f0e"></span>classe B &nbsp; ★ punto da classificare. <b>Clicca sul piano</b> per spostarlo.</p>
+  </section>
+  <section>
+    <div class="panel" id="kData"><h2>Dati</h2>
+      <div class="row"><label for="kSet">Insieme di dati</label>
+        <select id="kSet"><option value="blobs">Due nuvole separate</option><option value="over" selected>Due nuvole sovrapposte</option><option value="moons">Due mezzelune</option></select></div>
+      <div class="row"><label for="kSeed">Seme</label><input type="range" id="kSeed" min="1" max="20" value="4"><output id="kSeedV">4</output></div>
+      <div class="row"><label><input type="checkbox" id="kTest"> Mostra i punti di test (quadrati)</label></div>
+    </div>
+    <div class="panel" id="kParams"><h2>Il modello</h2>
+      <div class="row"><label for="kK">Numero di vicini k</label><input type="range" id="kK" min="1" max="25" value="3"><output id="kKV">3</output></div>
+      <div class="row"><label for="kDist">Distanza</label><select id="kDist"><option value="e">Euclidea</option><option value="m">Manhattan</option></select></div>
+      <div class="row" id="kScaleRow"><label for="kScale">Unità dell’asse x</label><select id="kScale"><option value="1">come l’asse y</option><option value="4">4 volte più grandi</option><option value="10">10 volte più grandi</option></select></div>
+      <div class="row"><label><input type="checkbox" id="kReg"> Mostra le regioni di decisione</label></div>
+    </div>
+    <div class="panel read" id="kOut" aria-live="polite"><h2>Il voto dei vicini</h2><div id="kOutT"></div></div>
+    <div class="panel" id="kAccP"><h2>Accuratezza al variare di k</h2>
+      <canvas id="cvAcc" data-aspect="1" width="520" height="200" aria-label="Accuratezza su training e test al variare di k" style="aspect-ratio:520/200"></canvas>
+      <div class="hint"><span class="sw" style="background:#2E7D32"></span>training &nbsp; <span class="sw" style="background:#C0611B"></span>test &nbsp; ○ k attuale. Su 70% dei punti si addestra, sul 30% si verifica.</div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ K-MEANS ============ -->
+<main class="app" id="pKm">
+  <section>
+    <canvas id="cvM" width="640" height="640" aria-label="Piano con i punti, i centroidi e i gruppi assegnati"></canvas>
+    <p class="hint">I punti non hanno etichetta: i colori sono assegnati dall’algoritmo. ✕ = centroide. Nei “Clienti di un negozio” l’asse orizzontale è la <b>frequenza delle visite</b> e quello verticale la <b>spesa media</b>.</p>
+  </section>
+  <section>
+    <div class="panel" id="mData"><h2>Dati</h2>
+      <div class="row"><label for="mSet">Insieme di dati</label>
+        <select id="mSet"><option value="three">Tre gruppi tondi</option><option value="two">Due gruppi vicini</option><option value="rings">Due anelli</option><option value="clients">Clienti di un negozio (4 gruppi)</option></select></div>
+      <div class="row"><label for="mK">Numero di gruppi K</label><input type="range" id="mK" min="1" max="7" value="3"><output id="mKV">3</output></div>
+      <div class="row"><label for="mSeed">Inizializzazione</label><input type="range" id="mSeed" min="1" max="20" value="3"><output id="mSeedV">3</output></div>
+    </div>
+    <div class="panel" id="mCtl"><h2>L’algoritmo</h2>
+      <div class="row"><button id="mStep" class="pri">Passo ▶</button><button id="mRun">Esegui fino in fondo</button><button id="mReset">Ricomincia</button></div>
+      <p class="hint" id="mPhase"></p>
+    </div>
+    <div class="panel read" id="mOut" aria-live="polite"><h2>Che cosa succede</h2><div id="mOutT"></div></div>
+    <div class="panel" id="mElbP"><h2>Quanti gruppi? Il gomito</h2>
+      <canvas id="cvElb" data-aspect="1" width="520" height="200" aria-label="Costo J al variare di K" style="aspect-ratio:520/200"></canvas>
+      <div class="hint">Costo J minimo trovato (migliore di 8 partenze) per ogni K. ○ = K attuale.</div>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var BL = "#1f77b4", OR = "#ff7f0e", PAL = ["#1f77b4", "#ff7f0e", "#2ca02c", "#9467bd", "#d62728", "#8c564b", "#17becf"];
+  function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(r) { var u = 1 - r(), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  var R = 4.5;
+  function setupCanvas(cv) {
+    var ctx = cv.getContext("2d");
+    function fit() { var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, w = Math.max(160, Math.round(r.width)), h = Math.round(w * cv.height / cv.width * (cv.dataset.fixed ? 1 : 1)); cv._W = w; cv._H = cv.dataset.aspect ? Math.round(r.height) : w; cv.width = Math.round(w * dpr); cv.height = Math.round(cv._H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    return { cv: cv, ctx: ctx, fit: fit };
+  }
+  function wx(c, x) { return c.cv._W / 2 + x * c.cv._W / (2 * R); }
+  function wy(c, y) { return c.cv._H / 2 - y * c.cv._W / (2 * R); }
+  function grid(c) {
+    var ctx = c.ctx, W = c.cv._W; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, c.cv._H);
+    ctx.strokeStyle = "#e3e9e9"; ctx.lineWidth = 1; ctx.fillStyle = "#6b7777"; ctx.font = "11px system-ui"; ctx.textAlign = "center";
+    for (var k = -4; k <= 4; k++) { ctx.strokeStyle = k === 0 ? "#9aa5a5" : "#e3e9e9"; ctx.beginPath(); ctx.moveTo(wx(c, k), 0); ctx.lineTo(wx(c, k), W); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, wy(c, k)); ctx.lineTo(W, wy(c, k)); ctx.stroke(); if (k) { ctx.fillText(k, wx(c, k), wy(c, 0) + 13); ctx.fillText(k, wx(c, 0) - 9, wy(c, k) + 4); } }
+  }
+  function dot(c, x, y, col, r, stroke) { var ctx = c.ctx; ctx.beginPath(); ctx.arc(wx(c, x), wy(c, y), r, 0, 6.2832); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = stroke || "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); }
+  function sqr(c, x, y, col, r) { var ctx = c.ctx; ctx.fillStyle = col; ctx.fillRect(wx(c, x) - r, wy(c, y) - r, 2 * r, 2 * r); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.strokeRect(wx(c, x) - r, wy(c, y) - r, 2 * r, 2 * r); }
+  function pos(c, ev) { var r = c.cv.getBoundingClientRect(); return { x: ((ev.clientX - r.left) / r.width * 2 - 1) * R, y: -((ev.clientY - r.top) / r.height * 2 - 1) * R }; }
+  function chart(c, series, xs, cur, ymax, ylab, xlab) {
+    var ctx = c.ctx, W = c.cv._W, H = c.cv._H, L = 38, B = 24, T = 10, Rr = 10; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    var n = xs.length, px = function (i) { return L + (W - L - Rr) * (n === 1 ? .5 : i / (n - 1)); }, py = function (v) { return T + (H - T - B) * (1 - v / ymax); };
+    ctx.strokeStyle = "#e3e9e9"; ctx.fillStyle = "#6b7777"; ctx.font = "11px system-ui"; ctx.textAlign = "right";
+    for (var g = 0; g <= 4; g++) { var v = ymax * g / 4; ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - Rr, py(v)); ctx.stroke(); ctx.fillText(ylab(v), L - 4, py(v) + 4); }
+    ctx.textAlign = "center"; xs.forEach(function (x, i) { if (n <= 9 || i % 4 === 0 || i === n - 1) ctx.fillText(x, px(i), H - 8); });
+    series.forEach(function (s) { ctx.strokeStyle = s.col; ctx.lineWidth = 2.2; ctx.beginPath(); s.v.forEach(function (v, i) { if (i) ctx.lineTo(px(i), py(v)); else ctx.moveTo(px(i), py(v)); }); ctx.stroke();
+      s.v.forEach(function (v, i) { ctx.beginPath(); ctx.arc(px(i), py(v), 2.4, 0, 6.3); ctx.fillStyle = s.col; ctx.fill(); }); });
+    var ci = xs.indexOf(cur); if (ci >= 0) series.forEach(function (s) { ctx.beginPath(); ctx.arc(px(ci), py(s.v[ci]), 6, 0, 6.3); ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 2; ctx.stroke(); });
+  }
+
+  /* ------------------------------- KNN ------------------------------- */
+  var CK = setupCanvas($("cvK")), CA = setupCanvas($("cvAcc"));
+  var K = { tr: [], te: [], q: { x: 0.3, y: 0.2 }, k: 3, dist: "e", sc: 1, reg: false, showTest: false };
+  function genK() {
+    var set = $("kSet").value, r = rng(+$("kSeed").value * 101 + 7), P = [], n = 100;
+    for (var i = 0; i < n; i++) {
+      var c = i % 2, x, y;
+      if (set === "blobs") { x = (c ? 1.6 : -1.6) + gauss(r) * 0.7; y = (c ? 1.0 : -1.0) + gauss(r) * 0.7; }
+      else if (set === "over") { x = (c ? 0.9 : -0.9) + gauss(r) * 1.15; y = (c ? 0.6 : -0.6) + gauss(r) * 1.15; }
+      else { var t = r() * Math.PI; if (c) { x = 1 - Math.cos(t) * 2 + 0.0; y = -Math.sin(t) * 1.6 + 0.5; x = x - 0.5; } else { x = Math.cos(t) * 2 - 1.5 + 1.0; y = Math.sin(t) * 1.6 - 0.5; x = x - 0.0; } x += gauss(r) * 0.25; y += gauss(r) * 0.25; }
+      P.push({ x: x, y: y, c: c });
+    }
+    var idx = P.map(function (_, i) { return i; }); for (var i2 = idx.length - 1; i2 > 0; i2--) { var j = Math.floor(r() * (i2 + 1)); var t2 = idx[i2]; idx[i2] = idx[j]; idx[j] = t2; }
+    K.tr = idx.slice(0, 70).map(function (i) { return P[i]; }); K.te = idx.slice(70).map(function (i) { return P[i]; });
+  }
+  function dK(a, bx, by) { var dx = (a.x - bx) * K.sc, dy = a.y - by; return K.dist === "e" ? Math.sqrt(dx * dx + dy * dy) : Math.abs(dx) + Math.abs(dy); }
+  function neigh(x, y, k, pool) { return (pool || K.tr).map(function (p) { return { p: p, d: dK(p, x, y) }; }).sort(function (a, b) { return a.d - b.d; }).slice(0, k); }
+  function vote(nb) { var v = [0, 0]; nb.forEach(function (n) { v[n.p.c]++; }); return v; }
+  function predK(x, y, k) { var v = vote(neigh(x, y, k)); return v[1] > v[0] ? 1 : v[0] > v[1] ? 0 : -1; }
+  function accK(pool, k) { var ok = 0; pool.forEach(function (p) { var pr = predK(p.x, p.y, k); if (pr === p.c || (pr === -1 && p.c === 1)) ok++; }); return ok / pool.length; }
+  function drawK() {
+    CK.fit(); var c = CK, ctx = c.ctx, W = c.cv._W;
+    grid(c);
+    if (K.reg) { var N = 44, s = W / N; for (var i = 0; i < N; i++) for (var j = 0; j < N; j++) { var x = ((i + .5) / N * 2 - 1) * R, y = -((j + .5) / N * 2 - 1) * R, v = vote(neigh(x, y, K.k)); var f = v[1] / (v[0] + v[1]); ctx.fillStyle = f > .5 ? "rgba(255,127,14,.22)" : f < .5 ? "rgba(31,119,180,.22)" : "rgba(150,150,150,.2)"; ctx.fillRect(i * s, j * s, s + 1, s + 1); } }
+    var nb = neigh(K.q.x, K.q.y, K.k);
+    var rad = nb[nb.length - 1].d / K.sc;
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = "#444"; ctx.lineWidth = 1.5;
+    if (K.dist === "e") { ctx.beginPath(); ctx.ellipse(wx(c, K.q.x), wy(c, K.q.y), rad * K.sc * W / (2 * R), rad * W / (2 * R) * 1, 0, 0, 6.3); ctx.stroke(); }
+    ctx.setLineDash([]);
+    nb.forEach(function (n) { ctx.strokeStyle = "rgba(60,60,60,.55)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(wx(c, K.q.x), wy(c, K.q.y)); ctx.lineTo(wx(c, n.p.x), wy(c, n.p.y)); ctx.stroke(); });
+    K.tr.forEach(function (p) { dot(c, p.x, p.y, p.c ? OR : BL, 5); });
+    nb.forEach(function (n) { ctx.beginPath(); ctx.arc(wx(c, n.p.x), wy(c, n.p.y), 9, 0, 6.3); ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 2; ctx.stroke(); });
+    if (K.showTest) K.te.forEach(function (p) { sqr(c, p.x, p.y, p.c ? OR : BL, 5); });
+    ctx.fillStyle = "#1d2433"; ctx.font = "bold 22px system-ui"; ctx.textAlign = "center"; ctx.fillText("★", wx(c, K.q.x), wy(c, K.q.y) + 8);
+    outK(nb); drawAcc();
+  }
+  function outK(nb) {
+    var v = vote(nb), win = v[1] > v[0] ? "B (arancione)" : v[0] > v[1] ? "A (blu)" : "pareggio";
+    var dm = nb.map(function (n) { return n.d.toFixed(2); }).slice(0, 5).join(", ") + (nb.length > 5 ? ", …" : "");
+    $("kOutT").innerHTML = "Con <b>k = " + K.k + "</b> i vicini sono <b>" + v[0] + " di classe A</b> e <b>" + v[1] + " di classe B</b>. Il punto ★ viene classificato nella classe <b>" + win + "</b>.<br><span class='hint'>Distanze dai vicini più prossimi: " + dm + "</span>";
+  }
+  function drawAcc() {
+    CA.fit(); var ks = [], tr = [], te = []; for (var k = 1; k <= 25; k++) { ks.push(k); tr.push(accK(K.tr, k)); te.push(accK(K.te, k)); }
+    chart(CA, [{ v: tr, col: "#2E7D32" }, { v: te, col: "#C0611B" }], ks, K.k, 1, function (v) { return Math.round(v * 100) + "%"; });
+    K.acc = { tr: tr, te: te };
+  }
+  $("cvK").addEventListener("pointerdown", function (ev) { var p = pos(CK, ev); K.q = { x: Math.max(-R, Math.min(R, p.x)), y: Math.max(-R, Math.min(R, p.y)) }; drawK(); });
+  function readK() { K.k = +$("kK").value; K.dist = $("kDist").value; K.sc = +$("kScale").value; K.reg = $("kReg").checked; K.showTest = $("kTest").checked; $("kKV").textContent = K.k; $("kSeedV").textContent = $("kSeed").value; }
+  ["kK", "kDist", "kScale", "kReg", "kTest"].forEach(function (id) { $(id).addEventListener("input", function () { readK(); drawK(); }); $(id).addEventListener("change", function () { readK(); drawK(); }); });
+  ["kSet", "kSeed"].forEach(function (id) { $(id).addEventListener("input", function () { readK(); genK(); drawK(); }); });
+
+  /* ------------------------------ K-means ------------------------------ */
+  var CM = setupCanvas($("cvM")), CE = setupCanvas($("cvElb"));
+  var M = { pts: [], cen: [], asg: [], phase: "assegna", it: 0, J: null, done: false, elbow: [] };
+  function genM() {
+    var set = $("mSet").value, r = rng(555), P = [], i;
+    if (set === "three") { var C = [[-2.2, -1.5], [2.2, -1.2], [0, 2.4]]; for (i = 0; i < 150; i++) { var c = C[i % 3]; P.push({ x: c[0] + gauss(r) * 0.7, y: c[1] + gauss(r) * 0.7 }); } }
+    else if (set === "two") { for (i = 0; i < 120; i++) { var s = i % 2 ? 1 : -1; P.push({ x: s * 1.3 + gauss(r) * 0.8, y: s * 0.4 + gauss(r) * 0.8 }); } }
+    else if (set === "clients") { var CC = [[-2.6, -1.8], [-2.4, 2.2], [2.0, 1.9], [2.5, -2.0]]; for (i = 0; i < 160; i++) { var cq = CC[i % 4]; P.push({ x: cq[0] + gauss(r) * 0.65, y: cq[1] + gauss(r) * 0.65 }); } }
+    else { for (i = 0; i < 160; i++) { var t = r() * 6.2832, rad = i % 2 ? 1.0 : 3.0; P.push({ x: Math.cos(t) * rad + gauss(r) * 0.12, y: Math.sin(t) * rad + gauss(r) * 0.12 }); } }
+    M.pts = P; elbow();
+  }
+  function lloyd(K, seed, stepMode) {
+    var r = rng(seed * 977 + 13), cen = [], used = {}, i; while (cen.length < K) { i = Math.floor(r() * M.pts.length); if (!used[i]) { used[i] = 1; cen.push({ x: M.pts[i].x, y: M.pts[i].y }); } }
+    var asg = [], J = 0;
+    for (var it = 0; it < 100; it++) { var ch = false; asg = M.pts.map(function (p, pi) { var b = 0, bd = 1e9; cen.forEach(function (c, ci) { var d = (p.x - c.x) * (p.x - c.x) + (p.y - c.y) * (p.y - c.y); if (d < bd) { bd = d; b = ci; } }); return b; });
+      cen = cen.map(function (c, ci) { var sx = 0, sy = 0, n = 0; M.pts.forEach(function (p, pi) { if (asg[pi] === ci) { sx += p.x; sy += p.y; n++; } }); if (!n) return c; var nx = sx / n, ny = sy / n; if (Math.abs(nx - c.x) > 1e-9 || Math.abs(ny - c.y) > 1e-9) ch = true; return { x: nx, y: ny }; });
+      if (!ch) break; }
+    J = 0; M.pts.forEach(function (p, pi) { var c = cen[asg[pi]]; J += (p.x - c.x) * (p.x - c.x) + (p.y - c.y) * (p.y - c.y); });
+    return J / M.pts.length;
+  }
+  function elbow() { M.elbow = []; for (var K2 = 1; K2 <= 8; K2++) { var best = 1e9; for (var s = 1; s <= 8; s++) best = Math.min(best, lloyd(K2, s)); M.elbow.push(best); } }
+  function resetM() {
+    var K2 = +$("mK").value, r = rng(+$("mSeed").value * 977 + 13), used = {}, i; M.cen = [];
+    while (M.cen.length < K2) { i = Math.floor(r() * M.pts.length); if (!used[i]) { used[i] = 1; M.cen.push({ x: M.pts[i].x, y: M.pts[i].y }); } }
+    M.asg = []; M.phase = "assegna"; M.it = 0; M.J = null; M.done = false; drawM();
+  }
+  function assign() { M.asg = M.pts.map(function (p) { var b = 0, bd = 1e9; M.cen.forEach(function (c, ci) { var d = (p.x - c.x) * (p.x - c.x) + (p.y - c.y) * (p.y - c.y); if (d < bd) { bd = d; b = ci; } }); return b; }); calcJ(); M.phase = "aggiorna"; }
+  function calcJ() { var J = 0; M.pts.forEach(function (p, pi) { var c = M.cen[M.asg[pi]]; J += (p.x - c.x) * (p.x - c.x) + (p.y - c.y) * (p.y - c.y); }); M.J = J / M.pts.length; }
+  function update() { var moved = false; M.cen = M.cen.map(function (c, ci) { var sx = 0, sy = 0, n = 0; M.pts.forEach(function (p, pi) { if (M.asg[pi] === ci) { sx += p.x; sy += p.y; n++; } }); if (!n) return c; var nx = sx / n, ny = sy / n; if (Math.abs(nx - c.x) > 1e-6 || Math.abs(ny - c.y) > 1e-6) moved = true; return { x: nx, y: ny }; }); calcJ(); M.it++; M.phase = "assegna"; if (!moved) M.done = true; }
+  function stepM() { if (M.done) { drawM(); return; } if (M.phase === "assegna") { var before = M.asg.join(); assign(); if (M.asg.join() === before && M.it > 0) M.done = true; } else update(); drawM(); }
+  function runM() { var g = 0; while (!M.done && g++ < 300) { if (M.phase === "assegna") { var before = M.asg.join(); assign(); if (M.asg.join() === before && M.it > 0) { M.done = true; break; } } else update(); } drawM(); }
+  function drawM() {
+    CM.fit(); var c = CM, ctx = c.ctx; grid(c);
+    if (M.asg.length) M.cen.forEach(function (cc, ci) { M.pts.forEach(function (p, pi) { if (M.asg[pi] === ci) { ctx.strokeStyle = PAL[ci] + "55"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx(c, p.x), wy(c, p.y)); ctx.lineTo(wx(c, cc.x), wy(c, cc.y)); ctx.stroke(); } }); });
+    M.pts.forEach(function (p, pi) { dot(c, p.x, p.y, M.asg.length ? PAL[M.asg[pi]] : "#9aa5a5", 5); });
+    M.cen.forEach(function (cc, ci) { var x = wx(c, cc.x), y = wy(c, cc.y); ctx.strokeStyle = "#fff"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke(); ctx.strokeStyle = PAL[ci]; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke(); });
+    $("mPhase").textContent = M.done ? "Convergenza: né le assegnazioni né i centroidi cambiano più." : M.phase === "assegna" ? "Prossimo passo: ogni punto sceglie il centroide più vicino." : "Prossimo passo: ogni centroide si sposta nel baricentro del suo gruppo.";
+    $("mOutT").innerHTML = "<b>K = " + M.cen.length + "</b> gruppi · iterazioni completate: <b>" + M.it + "</b><br>" + (M.J === null ? "Nessuna assegnazione ancora: i centroidi sono punti scelti a caso." : "Costo <b>J = " + M.J.toFixed(3) + "</b> (distanza al quadrato media dal centroide) " + (M.done ? "<b>finale</b>." : "al momento."));
+    CE.fit(); var xs = [1, 2, 3, 4, 5, 6, 7, 8], mx = Math.max.apply(null, M.elbow) * 1.05; chart(CE, [{ v: M.elbow, col: "#1F3864" }], xs, M.cen.length, mx, function (v) { return v.toFixed(1); });
+  }
+  ["mSet"].forEach(function (id) { $(id).addEventListener("change", function () { genM(); resetM(); }); });
+  ["mK", "mSeed"].forEach(function (id) { $(id).addEventListener("input", function () { $("mKV").textContent = $("mK").value; $("mSeedV").textContent = $("mSeed").value; resetM(); }); });
+  $("mStep").onclick = stepM; $("mRun").onclick = runM; $("mReset").onclick = resetM;
+
+  /* ------------------------------ tab ------------------------------ */
+  function tab(w) { $("pKnn").hidden = true; $("pKm").hidden = false; drawM(); }
+  window.addEventListener("resize", function () { drawM(); });
+
+  /* ------------------------------ esperienze ------------------------------ */
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setc(id, on) { var e = $(id); e.checked = on; e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function kInit(o) { tab("k"); setv("kSet", o.set || "over"); setv("kSeed", o.seed || 4); setv("kK", o.k || 3); setv("kDist", "e"); setv("kScale", 1); setc("kReg", !!o.reg); setc("kTest", !!o.test); K.q = o.q || { x: 0.3, y: 0.2 }; drawK(); }
+  function mInit(o) { tab("m"); setv("mSet", o.set || "three"); setv("mK", o.k || 3); setv("mSeed", o.seed || 3); resetM(); }
+  var EXPS = [
+    { id: "k1", title: "KNN: chi sono i vicini?", time: "6 min", desc: "Classificare un punto guardando i k più vicini. Effetto di k e delle regioni.", steps: [
+      { t: "Un punto da classificare", x: "Ci sono punti di due classi (blu = A, arancione = B). La <b>stella ★</b> è un nuovo punto di cui non conosciamo la classe: vogliamo <b>indovinarla</b>. Nessuna formula: guardiamo chi gli sta intorno.", el: "#cvK", apply: function () { kInit({ k: 3 }); } },
+      { t: "I tre vicini", x: "Con <b>k = 3</b> si prendono i 3 punti <b>più vicini</b> (cerchiati, collegati alla stella) e si fa <b>votare</b>: vince la classe più frequente. Il riquadro conta i voti.", el: sel("#kOut") },
+      { t: "Cambia il punto", x: "<b>Clicca</b> in un altro punto del piano: i vicini cambiano e con essi il voto. Vicino al confine tra le nuvole il voto è incerto.", el: "#cvK", btn: "Sposta la stella al centro", apply: function () { K.q = { x: 0, y: 0 }; drawK(); } },
+      { t: "k = 1: conta solo il più vicino", x: "Porta <b>k a 1</b>: decide un solo punto. È sensibile al <b>rumore</b>: un punto fuori posto può cambiare la risposta.", el: sel("#kParams"), btn: "k = 1", apply: function () { setv("kK", 1); } },
+      { t: "k grande: voto più stabile", x: "Porta <b>k a 15</b>: ora decidono molti vicini, la risposta è più stabile ma meno “locale”.", el: sel("#kParams"), btn: "k = 15", apply: function () { setv("kK", 15); } },
+      { t: "Le regioni di decisione", x: "Attiva <b>“Mostra le regioni di decisione”</b>: il colore di sfondo è la classe che KNN darebbe in <b>ogni</b> punto del piano. Con k grande il confine è più liscio; con k piccolo è frastagliato.", el: sel("#kParams"), btn: "Mostra le regioni", apply: function () { setc("kReg", true); } },
+      { t: "Quale k scegliere?", x: "Il grafico mostra la <b>accuratezza</b> al variare di k, sui dati di <b>training</b> (verde) e su dati di <b>test</b> mai visti (arancione). Con k = 1 il training è perfetto ma il test no (<b>varianza</b>); con k molto grande il modello diventa troppo semplice (<b>bias</b>). Si sceglie il k dove il test è migliore.", el: "#kAccP" },
+      { t: "Prova tu: la scala delle feature", x: "Metti l’asse x in unità <b>10 volte più grandi</b> (come misurare una feature in metri e l’altra in millimetri). La distanza è dominata da x e le regioni diventano strisce verticali: per questo si <b>standardizzano</b> le feature prima di usare KNN.", el: sel("#kScaleRow"), btn: "Unità x × 10", apply: function () { setv("kScale", 10); } }
+    ] },
+    { id: "m1", title: "K-means passo per passo", time: "7 min", desc: "Assegnare i punti ai centroidi e spostare i centroidi, a ripetizione.", steps: [
+      { t: "Dati senza etichetta", x: "Qui i punti <b>non hanno classe</b>. Vogliamo che l’algoritmo li <b>raggruppi da solo</b> in K gruppi (apprendimento non supervisionato). Per ora sono tutti grigi.", el: "#cvM", apply: function () { mInit({ k: 3, seed: 3 }); } },
+      { t: "Tre centroidi a caso", x: "Si scelgono <b>K = 3</b> punti a caso come centroidi iniziali (le <b>✕</b> colorate). Sono solo una prima ipotesi, quasi sicuramente sbagliata.", el: "#cvM" },
+      { t: "Passo 1: assegna", x: "Premi <b>Passo ▶</b>: ogni punto prende il colore del centroide <b>più vicino</b>. Compare il costo J: la distanza al quadrato media tra punto e centroide.", el: "#mCtl", btn: "Passo ▶", apply: function () { stepM(); } },
+      { t: "Passo 2: sposta i centroidi", x: "Secondo passo: ogni centroide si sposta nel <b>baricentro</b> (la media delle coordinate) dei punti del suo colore. Guarda le ✕ muoversi e J diminuire.", el: "#mCtl", btn: "Passo ▶", apply: function () { stepM(); } },
+      { t: "Si ripete fino in fondo", x: "Assegnare e spostare, assegnare e spostare… Premi <b>Esegui fino in fondo</b>: l’algoritmo si ferma quando <b>nulla cambia più</b>. J non può che scendere a ogni passo.", el: "#mCtl", btn: "Esegui", apply: function () { runM(); } },
+      { t: "Un inizio sfortunato", x: "Cambia l’<b>inizializzazione</b> (altri centroidi di partenza) ed esegui di nuovo: con questa partenza due centroidi finiscono nello stesso gruppo e J finale è <b>molto più alto</b>. K-means trova un minimo <b>locale</b>: in pratica si ripete più volte e si tiene la soluzione col J minore.", el: "#mData", btn: "Prova un’altra partenza", apply: function () { setv("mSeed", 10); runM(); } },
+      { t: "Quanti gruppi? Il gomito", x: "Il grafico mostra il J minimo per K da 1 a 8. Scende molto fino a <b>K = 3</b> e poi poco: quel “<b>gomito</b>” suggerisce il numero giusto di gruppi. Aumentare K fa sempre scendere J: scegliere K troppo alto è <b>overfitting</b>.", el: "#mElbP" },
+      { t: "Quando k-means sbaglia", x: "Scegli i <b>Due anelli</b> con K = 2. I gruppi veri sono un anello dentro un altro, ma k-means cerca gruppi <b>tondi</b> e taglia il piano a metà. Serve un’idea diversa (o nuove feature, come il raggio).", el: "#mData", btn: "Due anelli", apply: function () { setv("mSet", "rings"); setv("mK", 2); resetM(); runM(); } }
+    ] },
+    { id: "m2", title: "Segmentare i clienti di un negozio", time: "6 min", desc: "Un caso reale: raggruppare i clienti per abitudini d’acquisto e scegliere quanti gruppi.", steps: [
+      { t: "Chi sono i clienti?", x: "Ogni punto è un cliente: a destra chi viene <b>spesso</b>, in alto chi <b>spende di più</b> a ogni acquisto. Nessuno ha un’etichetta: il negozio vorrebbe scoprire se esistono <b>tipi di cliente</b> diversi, per pensare offerte diverse.", el: "#cvM", apply: function () { mInit({ set: "clients", k: 2, seed: 3 }); } },
+      { t: "Proviamo con K = 2", x: "Con <b>K = 2</b> l’algoritmo trova due gruppi: a sinistra i clienti che vengono poco, a destra quelli che vengono spesso. Il costo è <b>J = 4,97</b>: ma dentro ogni gruppo ci sono ancora clienti molto diversi per spesa.", el: ["#mK", "#cvM"], btn: "Esegui", apply: function () { runM(); } },
+      { t: "Quanti tipi ci sono davvero?", x: "Il grafico del <b>gomito</b> riporta il J minimo per ogni K. Passando da 1 a 4 gruppi J crolla (da 10,6 a 0,80); da 4 in poi scende pochissimo. Il gomito è a <b>K = 4</b>.", el: "#mElbP" },
+      { t: "Quattro segmenti", x: "Scegli <b>K = 4</b> ed esegui. Escono quattro gruppi, uno per angolo: <b>pochi acquisti e spesa bassa</b>, <b>pochi acquisti e spesa alta</b>, <b>molti acquisti e spesa alta</b>, <b>molti acquisti e spesa bassa</b>. Ora J = 0,80.", el: ["#cvM", "#mOut"], btn: "K = 4", apply: function () { setv("mK", 4); setv("mSeed", 4); resetM(); runM(); } },
+      { t: "Ogni centroide è un cliente tipo", x: "Le ✕ sono le <b>medie</b> dei gruppi: ciascuna descrive un “cliente tipo” (quante volte viene, quanto spende). È su questi profili che il negozio può decidere un’offerta diversa per ciascun gruppo.", el: "#cvM" }
+    ] }
+  ];
+  function sel() { return Array.prototype.slice.call(arguments); }
+  window.__vg = { K: K, M: M, tab: tab, runM: runM, stepM: stepM };
+  EXPS = EXPS.filter(function (e) { return e.id.charAt(0) === "m"; });
+  Tour.init(EXPS);
+  readK(); genK(); genM(); resetM(); tab("m");
+  window.addEventListener("load", function () { drawM(); });
+})();
+</script>
+</body>
+</html>

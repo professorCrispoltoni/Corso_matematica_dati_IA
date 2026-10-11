@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testo e parole come numeri</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+.hint{font-size:.88rem}
+.app input[type=text],.app input[type=number]{font:inherit;font-size:.95rem;padding:6px 8px;border:1px solid var(--line);border-radius:6px;color:var(--ink);min-width:0}
+.app input[type=text]{flex:1 1 220px}
+.app input:focus-visible,.app textarea:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+.app textarea{width:100%;min-height:110px;font:inherit;font-size:.95rem;padding:7px 9px;border:1px solid var(--line);border-radius:6px;resize:vertical;color:var(--ink)}
+.app select{max-width:100%;min-width:0;flex:1 1 160px;text-overflow:ellipsis}
+.fl{font-weight:700;color:var(--navy);min-width:2.2em}
+.ttb{font-size:.9rem;width:auto;min-width:100%}
+.ttb th,.ttb td{padding:5px 8px;text-align:center}
+.ttb th{text-transform:none;font-size:.85rem;letter-spacing:0}
+.ttb td:first-child,.ttb th:first-child{text-align:left;white-space:nowrap;font-weight:700;color:var(--navy);position:sticky;left:0;background:#fff}
+.ttb td.z{color:#9aa5a5}
+.ttb td.rowsel{cursor:pointer}
+.ttb tr.sel td{background:#fff7ea}
+.maxh{max-height:330px;overflow:auto}
+.fm{font:1rem/1.75 Georgia,"Times New Roman",serif;overflow-wrap:anywhere}
+.fm p{margin:0 0 6px;max-width:none}
+.rk{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin-top:6px}
+.rk .it{display:grid;grid-template-columns:2.2em minmax(0,1fr) 3.4em;gap:8px;align-items:center;font-size:.95rem}
+.rk .bar2{height:14px;background:#e3ebeb;border-radius:4px;position:relative;overflow:hidden}
+.rk .bar2 i{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:4px}
+.rk .it span.t{display:block;font-size:.88rem;color:var(--mute);grid-column:2 / 4;margin-top:-3px;overflow-wrap:anywhere}
+.rk .it.top .bar2 i{background:var(--orange)}
+.pb{display:grid;grid-template-columns:4.6em minmax(0,1fr) 8.6em;gap:4px 8px;align-items:center;font-size:.92rem;margin-top:5px}
+.pb .bb{height:11px;background:#e3ebeb;border-radius:3px;position:relative;overflow:hidden}
+.pb .bb i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.pb .nm{font-weight:700;color:var(--navy);overflow-wrap:anywhere}
+.pb .vl{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--mute)}
+.gen{font:1.1rem/1.6 Georgia,"Times New Roman",serif;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-top:8px;overflow-wrap:anywhere}
+.gen div{margin-bottom:4px}
+.warn{background:#fff7ea;border:1px solid #efcfa8;border-radius:8px;padding:8px 12px;font-size:.92rem;color:#5b3a10;margin:0 0 12px}
+.lg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.88rem;color:var(--mute);margin:6px 0 0}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Testo e parole come numeri</h1><p>dal conteggio delle parole alla previsione della parola successiva</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="wrap" style="padding-top:12px"><div class="tabs" role="tablist"><button id="tb1" class="on" role="tab">Conta le parole</button><button id="tb2" role="tab">Parole nello spazio</button><button id="tb3" role="tab">Prevedi la parola successiva</button></div></div>
+
+<!-- ============ 1. CONTA LE PAROLE ============ -->
+<main class="app" id="p1">
+  <section>
+    <div class="panel" id="tPh"><h2>Le frasi (modificabili)</h2>
+      <div class="row"><span class="fl">F1</span><input type="text" id="f1" maxlength="120" aria-label="Frase 1"></div>
+      <div class="row"><span class="fl">F2</span><input type="text" id="f2" maxlength="120" aria-label="Frase 2"></div>
+      <div class="row"><span class="fl">F3</span><input type="text" id="f3" maxlength="120" aria-label="Frase 3"></div>
+      <div class="row"><span class="fl">F4</span><input type="text" id="f4" maxlength="120" aria-label="Frase 4"></div>
+      <p class="hint">Frasi di esempio inventate. Una frase lasciata vuota viene ignorata.</p>
+    </div>
+    <div class="panel" id="tOpt"><h2>Come contare</h2>
+      <div class="row"><label><input type="checkbox" id="tStop"> Ignora le parole vuote (articoli, preposizioni…)</label></div>
+      <div class="row"><label><input type="checkbox" id="tIdf"> Usa TF-IDF invece dei conteggi</label></div>
+      <p class="hint" id="tIdfT"></p>
+    </div>
+    <div class="panel read" id="tTab"><h2>Frasi × parole: la tabella dei conteggi</h2>
+      <div class="tw maxh"><table class="ttb" id="tTbl"></table></div>
+      <p class="hint" id="tTblT"></p>
+    </div>
+  </section>
+  <section>
+    <div class="panel read" id="tCosP"><h2>Somiglianza coseno tra le frasi</h2>
+      <div class="tw"><table class="ttb" id="tCos"></table></div>
+      <p class="hint">Da 0 (nessuna parola in comune) a 1 (stesse parole nelle stesse proporzioni).</p>
+    </div>
+    <div class="panel" id="tPair"><h2>Il calcolo per una coppia</h2>
+      <div class="row"><label for="tA">Frase</label><select id="tA"><option value="0">F1</option><option value="1">F2</option><option value="2">F3</option><option value="3">F4</option></select>
+        <label for="tB">e</label><select id="tB"><option value="0">F1</option><option value="1" selected>F2</option><option value="2">F3</option><option value="3">F4</option></select></div>
+      <div class="fm" id="tDet" aria-live="polite" style="margin-top:8px"></div>
+    </div>
+    <div class="panel" id="tSea"><h2>Un motore di ricerca minimo</h2>
+      <div class="row"><label for="tQ">Domanda</label><input type="text" id="tQ" maxlength="120" value="dove dorme il gatto?"></div>
+      <p class="hint" id="tQT"></p>
+      <div class="rk" id="tRank" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 2. PAROLE NELLO SPAZIO ============ -->
+<main class="app" id="p2" hidden>
+  <section>
+    <canvas id="cvW" width="640" height="640" style="aspect-ratio:1/1" aria-label="Piano con 27 parole disposte a mano. Si seleziona una parola per vedere le più vicine per coseno."></canvas>
+    <p class="hint">Un punto = una parola, con due coordinate. Il <b>coseno</b> guarda l’<b>angolo</b> tra le frecce che partono dall’origine, non la distanza sul foglio. <b>Clicca</b> una parola.</p>
+  </section>
+  <section>
+    <div class="warn"><b>Vettori illustrativi, non appresi da un modello.</b> Le coordinate di queste parole sono state scelte a mano perché funzionino da esempio. I veri <i>embedding</i> hanno centinaia di dimensioni e si ricavano da enormi quantità di testo.</div>
+    <div class="panel" id="wSel"><h2>Le parole più vicine</h2>
+      <div class="row"><label for="wPick">Parola</label><select id="wPick"></select></div>
+      <div class="rk" id="wNb" aria-live="polite"></div>
+    </div>
+    <div class="panel" id="wAna"><h2>Calcolatrice di analogie</h2>
+      <div class="row"><select id="aA" aria-label="Prima parola"></select><b>−</b><select id="aB" aria-label="Seconda parola"></select><b>+</b><select id="aC" aria-label="Terza parola"></select></div>
+      <div class="fm" id="aOut" aria-live="polite" style="margin-top:8px"></div>
+    </div>
+    <div class="panel read"><h2>E nella realtà?</h2>
+      <p style="font-size:.95rem">Con 2 dimensioni le parole “stanno strette”: in un modello vero ogni parola è un vettore di 100–1000 e più numeri, e le relazioni (genere, capitale-paese…) emergono dai dati. Qui le abbiamo disegnate noi, quindi l’analogia funziona per costruzione. Nei modelli veri funziona spesso in modo solo approssimato, e può riprodurre i pregiudizi presenti nei testi.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 3. PAROLA SUCCESSIVA ============ -->
+<main class="app" id="p3" hidden>
+  <section>
+    <div class="panel" id="nCorp"><h2>Il testo di partenza (modificabile)</h2>
+      <div class="row"><label for="nPre">Esempio</label><select id="nPre"><option value="a">Animali di casa (inventato)</option><option value="m">Filastrocca dei mesi (tradizionale)</option></select></div>
+      <div class="row" style="flex-direction:column;align-items:stretch"><textarea id="nTxt" spellcheck="false" aria-label="Testo di partenza"></textarea></div>
+      <p class="hint" id="nInfo"></p>
+    </div>
+    <div class="panel read" id="nTab"><h2>Quante volte una parola segue l’altra</h2>
+      <div class="tw maxh"><table class="ttb" id="nTbl"></table></div>
+      <p class="hint">Righe: la parola corrente. Colonne: la parola che segue (“.” = fine frase). Clicca il nome di una riga per sceglierla.</p>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="nProb"><h2>Che cosa può seguire?</h2>
+      <div class="row"><label for="nW">Parola scelta</label><select id="nW"></select></div>
+      <div id="nBars" aria-live="polite"></div>
+      <p class="hint" id="nBarsT"></p>
+    </div>
+    <div class="panel" id="nGen"><h2>Genera una frase</h2>
+      <div class="row" role="radiogroup" aria-label="Come scegliere"><label><input type="radio" name="nMode" value="g"> sempre la più probabile (greedy)</label><label><input type="radio" name="nMode" value="s" checked> a sorte, con temperatura</label></div>
+      <div class="row" id="nTRow"><label for="nT">Temperatura T</label><input type="range" id="nT" min="0.2" max="2.5" step="0.1" value="1"><output id="nTV">1,0</output></div>
+      <div class="row"><label for="nSeed">Seme</label><input type="number" id="nSeed" value="7" min="0" max="9999" style="width:6em"><label for="nLen">Lunghezza massima</label><input type="range" id="nLen" min="4" max="20" value="10" style="max-width:130px"><output id="nLenV">10</output></div>
+      <div class="row"><button id="nGo" class="pri">Genera una frase</button><button id="nGo5">Genera 5 frasi</button><button id="nNew">Cambia seme</button></div>
+      <div class="gen" id="nOut" aria-live="polite"></div>
+      <p class="hint">Si parte dalla parola scelta e si aggiunge una parola per volta, finché c’è un punto o si raggiunge la lunghezza massima. Con lo stesso seme esce sempre la stessa frase.</p>
+    </div>
+    <div class="panel read"><h2>Perché è importante</h2>
+      <p style="font-size:.95rem">Prevedere la parola successiva a partire da ciò che precede è il <b>compito di fondo</b> dei modelli linguistici. Qui il “modello” è una tabella che guarda <b>una sola parola</b> di contesto. I modelli moderni guardano migliaia di parole e usano una rete neurale al posto della tabella, ma anche loro producono una <b>distribuzione di probabilità</b> sulla parola successiva e ne scelgono una, con una temperatura.</p>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var NAVY = "#1F3864", TEAL = "#0F6E6E", ORG = "#C0611B", INK = "#1d2433", MUTE = "#566074";
+  function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function fmt(v, d) { if (d === undefined) d = 2; if (v === null || v === undefined || !isFinite(v)) return "—"; var k = Math.pow(10, d), s = (Math.round(v * k) / k).toFixed(d); if (/^-0(\.0*)?$/.test(s)) s = s.slice(1); return s.replace(".", ",").replace("-", "−"); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setc(id, on) { var e = $(id); e.checked = on; e.dispatchEvent(new Event("change", { bubbles: true })); }
+
+  /* ======================= 1. BAG OF WORDS ======================= */
+  var STOP = "il lo la i gli le l un uno una di del dello della dei degli delle a al allo alla ai agli alle da dal dallo dalla in nel nello nella su sul sullo sulla con per tra fra e ed è o ma che chi cosa dove come quando quale non si ci ne mi ti d dell all nell sull dall".split(" ");
+  var STOPSET = {}; STOP.forEach(function (w) { STOPSET[w] = 1; });
+  var DEF = ["Il gatto dorme sul divano", "Il cane dorme sul tappeto", "Il gatto mangia il pesce", "Domani a Roma pioverà tutto il giorno"];
+  var B = { ph: DEF.slice(), stop: false, idf: false, vocab: [], vec: [], cnt: [], ids: [], N: 0, df: {}, idfw: {}, pairA: 0, pairB: 1 };
+  function tokens(s, useStop) { var t = (s.toLowerCase().match(/\p{L}+/gu) || []); return useStop ? t.filter(function (w) { return !STOPSET[w]; }) : t; }
+  function buildB() {
+    B.ids = []; B.ph.forEach(function (p, i) { if (p.trim()) B.ids.push(i); });
+    var toks = B.ph.map(function (p) { return tokens(p, B.stop); }), set = {};
+    B.ids.forEach(function (i) { toks[i].forEach(function (w) { set[w] = 1; }); });
+    B.vocab = Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "it"); });
+    B.N = B.ids.length; B.df = {}; B.idfw = {};
+    B.vocab.forEach(function (w) { var d = 0; B.ids.forEach(function (i) { if (toks[i].indexOf(w) >= 0) d++; }); B.df[w] = d; B.idfw[w] = Math.log(B.N / d); });
+    B.cnt = []; B.vec = [];
+    B.ph.forEach(function (p, i) { var c = B.vocab.map(function (w) { return toks[i].filter(function (x) { return x === w; }).length; }); B.cnt.push(c); B.vec.push(c.map(function (n, j) { return B.idf ? n * B.idfw[B.vocab[j]] : n; })); });
+    B.toks = toks;
+  }
+  function dot(a, b) { var s = 0; for (var i = 0; i < a.length; i++) s += a[i] * b[i]; return s; }
+  function norm(a) { return Math.sqrt(dot(a, a)); }
+  function cosv(a, b) { var na = norm(a), nb = norm(b); return (na > 0 && nb > 0) ? dot(a, b) / (na * nb) : NaN; }
+  function renderB() {
+    buildB(); var h = "<tr><th></th>" + B.vocab.map(function (w) { return "<th>" + esc(w) + "</th>"; }).join("") + "</tr>";
+    B.ph.forEach(function (p, i) { if (!p.trim()) return; h += "<tr><td>F" + (i + 1) + "</td>" + B.vec[i].map(function (v) { return "<td class='" + (v === 0 ? "z" : "") + "'>" + (B.idf ? (v === 0 ? "0" : fmt(v, 2)) : v) + "</td>"; }).join("") + "</tr>"; });
+    $("tTbl").innerHTML = h;
+    $("tTblT").textContent = B.vocab.length ? "Vocabolario: " + B.vocab.length + " parole diverse. Ogni riga è il vettore della frase (una coordinata per parola)." : "Scrivi almeno una frase.";
+    $("tIdfT").innerHTML = B.idf ? "<b>TF-IDF</b>: ogni conteggio (TF) è moltiplicato per IDF = ln(N / df), dove N = " + B.N + " frasi e df = in quante frasi compare la parola. Una parola presente in tutte le frasi pesa 0; una parola rara pesa di più." : "Con i conteggi, ogni parola vale quanto il numero di volte che compare. TF-IDF (facoltativo) dà più peso alle parole rare, che distinguono meglio una frase dalle altre.";
+    var c = "<tr><th></th>" + [0, 1, 2, 3].map(function (i) { return "<th>F" + (i + 1) + "</th>"; }).join("") + "</tr>";
+    for (var i = 0; i < 4; i++) { c += "<tr><td>F" + (i + 1) + "</td>"; for (var j = 0; j < 4; j++) { var ok = B.ph[i].trim() && B.ph[j].trim(), v = ok ? cosv(B.vec[i], B.vec[j]) : NaN; c += "<td style='background:rgba(15,110,110," + (isFinite(v) ? Math.max(0, v) * 0.55 : 0) + ")'>" + fmt(v, 2) + "</td>"; } c += "</tr>"; }
+    $("tCos").innerHTML = c;
+    renderDet(); renderRank();
+  }
+  function termStr(arr, f) { if (arr.length > 6) return arr.slice(0, 4).map(f).join(" + ") + " + … + " + f(arr[arr.length - 1]); return arr.map(f).join(" + "); }
+  function renderDet() {
+    var a = B.pairA, b = B.pairB, va = B.vec[a], vb = B.vec[b];
+    if (!B.ph[a].trim() || !B.ph[b].trim()) { $("tDet").innerHTML = "<p>Una delle due frasi è vuota.</p>"; return; }
+    var com = [], i; for (i = 0; i < va.length; i++) if (va[i] !== 0 && vb[i] !== 0) com.push(i);
+    var d = dot(va, vb), na = norm(va), nb = norm(vb), nz = function (v) { return v.filter(function (x) { return x !== 0; }); }, fv = function (x) { return B.idf ? fmt(x, 2) : String(x); };
+    var h = "<p>F" + (a + 1) + " = «" + esc(B.ph[a]) + "»<br>F" + (b + 1) + " = «" + esc(B.ph[b]) + "»</p>";
+    h += "<p><b>Parole in comune:</b> " + (com.length ? com.map(function (j) { return esc(B.vocab[j]) + " (" + fv(va[j]) + "×" + fv(vb[j]) + ")"; }).join(", ") : "nessuna") + "</p>";
+    h += "<p><b>Prodotto scalare</b> &nbsp;v<sub>" + (a + 1) + "</sub> · v<sub>" + (b + 1) + "</sub> = Σ v<sub>" + (a + 1) + "j</sub> v<sub>" + (b + 1) + "j</sub> = " + (com.length ? termStr(com, function (j) { return fv(va[j]) + "·" + fv(vb[j]); }) + " = " : "") + "<b>" + fmt(d, 2) + "</b></p>";
+    h += "<p><b>Norme</b> &nbsp;‖v<sub>" + (a + 1) + "</sub>‖ = √(" + termStr(nz(va), function (x) { return fv(x) + "²"; }) + ") = <b>" + fmt(na, 2) + "</b> &nbsp; ‖v<sub>" + (b + 1) + "</sub>‖ = √(" + termStr(nz(vb), function (x) { return fv(x) + "²"; }) + ") = <b>" + fmt(nb, 2) + "</b></p>";
+    if (na > 0 && nb > 0) { var cs = d / (na * nb); h += "<p><b>Coseno</b> &nbsp;cos θ = (v<sub>" + (a + 1) + "</sub> · v<sub>" + (b + 1) + "</sub>) / (‖v<sub>" + (a + 1) + "</sub>‖ ‖v<sub>" + (b + 1) + "</sub>‖) = " + fmt(d, 2) + " / (" + fmt(na, 2) + " × " + fmt(nb, 2) + ") = <b>" + fmt(cs, 2) + "</b> &nbsp;<span class='hint'>(angolo θ ≈ " + fmt(Math.acos(Math.min(1, Math.max(-1, cs))) * 180 / Math.PI, 1) + "°)</span></p>"; }
+    else h += "<p>Una delle due frasi ha vettore nullo (tutte parole vuote o con peso 0): il coseno non è definito.</p>";
+    $("tDet").innerHTML = h;
+  }
+  function renderRank() {
+    var q = $("tQ").value, tq = tokens(q, B.stop), known = [], unk = [];
+    tq.forEach(function (w) { (B.vocab.indexOf(w) >= 0 ? known : unk).push(w); });
+    var qv = B.vocab.map(function (w) { var n = known.filter(function (x) { return x === w; }).length; return B.idf ? n * B.idfw[w] : n; });
+    $("tQT").innerHTML = "Parole della domanda trovate nelle frasi: <b>" + (known.length ? esc(known.join(", ")) : "nessuna") + "</b>" + (unk.length ? ". Ignorate (non compaiono in nessuna frase" + (B.stop ? " o sono parole vuote" : "") + "): " + esc(unk.join(", ")) : "") + ".";
+    var res = B.ids.map(function (i) { var c = cosv(qv, B.vec[i]); return { i: i, c: isFinite(c) ? c : 0, nan: !isFinite(c) }; }).sort(function (x, y) { return y.c - x.c || x.i - y.i; });
+    $("tRank").innerHTML = res.map(function (r, k) { return "<div class='it" + (k === 0 && r.c > 0 ? " top" : "") + "'><b>F" + (r.i + 1) + "</b><div class='bar2'><i style='width:" + Math.round(r.c * 100) + "%'></i></div><span>" + fmt(r.c, 2) + "</span><span class='t'>" + esc(B.ph[r.i]) + "</span></div>"; }).join("");
+  }
+  ["f1", "f2", "f3", "f4"].forEach(function (id, k) { $(id).value = DEF[k]; $(id).addEventListener("input", function () { B.ph[k] = $(id).value; renderB(); }); });
+  $("tStop").addEventListener("change", function () { B.stop = $("tStop").checked; renderB(); });
+  $("tIdf").addEventListener("change", function () { B.idf = $("tIdf").checked; renderB(); });
+  $("tA").addEventListener("change", function () { B.pairA = +$("tA").value; renderB(); });
+  $("tB").addEventListener("change", function () { B.pairB = +$("tB").value; renderB(); });
+  $("tQ").addEventListener("input", renderRank);
+
+  /* ======================= 2. PAROLE NELLO SPAZIO ======================= */
+  var W = [
+    ["uomo", -0.70, 0.30], ["donna", -0.60, 0.52], ["re", -0.88, 0.50], ["regina", -0.76, 0.74], ["principe", -0.80, 0.18], ["principessa", -0.70, 0.40],
+    ["Italia", 0.30, 0.70], ["Roma", 0.43, 0.83], ["Francia", 0.12, 0.80], ["Parigi", 0.24, 0.94], ["Spagna", 0.45, 0.62], ["Madrid", 0.57, 0.76],
+    ["cane", 0.85, 0.22], ["gatto", 0.80, 0.34], ["cavallo", 0.92, 0.05], ["leone", 0.74, -0.02],
+    ["mela", 0.55, -0.45], ["pera", 0.62, -0.38], ["banana", 0.45, -0.60], ["arancia", 0.70, -0.55],
+    ["felice", -0.10, -0.85], ["contento", -0.20, -0.80], ["triste", -0.38, -0.68], ["arrabbiato", -0.52, -0.60],
+    ["pane", -0.88, -0.15], ["pasta", -0.82, -0.28], ["pizza", -0.92, -0.30]
+  ];
+  var GRP = [[0, 5, "#1F3864"], [6, 11, "#0F6E6E"], [12, 15, "#C0611B"], [16, 19, "#2E7D32"], [20, 23, "#8e3b8e"], [24, 26, "#7a5a1a"]];
+  function wcol(i) { for (var k = 0; k < GRP.length; k++) if (i >= GRP[k][0] && i <= GRP[k][1]) return GRP[k][2]; return NAVY; }
+  var WS = { sel: 13, view: "nb", cv: $("cvW"), ctx: $("cvW").getContext("2d"), pos: [] };
+  W.forEach(function (w, i) { ["wPick", "aA", "aB", "aC"].forEach(function (id) { $(id).insertAdjacentHTML("beforeend", "<option value='" + i + "'>" + w[0] + "</option>"); }); });
+  $("aA").value = 2; $("aB").value = 0; $("aC").value = 1; $("wPick").value = 13;
+  function wcos(i, v) { var a = W[i], na = Math.hypot(a[1], a[2]), nv = Math.hypot(v[0], v[1]); return na > 0 && nv > 0 ? (a[1] * v[0] + a[2] * v[1]) / (na * nv) : NaN; }
+  function nearest(v, excl, k) { var r = []; W.forEach(function (w, i) { if (excl.indexOf(i) < 0) r.push({ i: i, c: wcos(i, v) }); }); return r.sort(function (x, y) { return y.c - x.c; }).slice(0, k); }
+  function ana() { var a = +$("aA").value, b = +$("aB").value, c = +$("aC").value; var v = [W[a][1] - W[b][1] + W[c][1], W[a][2] - W[b][2] + W[c][2]]; return { a: a, b: b, c: c, v: v, nn: nearest(v, [a, b, c], 3) }; }
+  function wlist() {
+    var v = [W[WS.sel][1], W[WS.sel][2]], nb = nearest(v, [WS.sel], 5);
+    $("wNb").innerHTML = "<p class='hint' style='margin:0'>Coseno tra <b>" + W[WS.sel][0] + "</b> e le altre parole (1 = stessa direzione):</p>" + nb.map(function (r, k) { return "<div class='it" + (k === 0 ? " top" : "") + "'><b style='width:auto'>" + (k + 1) + "</b><div class='bar2'><i style='width:" + Math.round(Math.max(0, r.c) * 100) + "%'></i></div><span>" + fmt(r.c, 2) + "</span><span class='t'>" + W[r.i][0] + "</span></div>"; }).join("");
+    WS.nb = nb;
+  }
+  function wana() {
+    var A = ana(), n = A.nn[0], f = function (x) { return fmt(x, 2); };
+    $("aOut").innerHTML = "<p><b>" + W[A.a][0] + "</b> = (" + f(W[A.a][1]) + "; " + f(W[A.a][2]) + ") &nbsp; <b>" + W[A.b][0] + "</b> = (" + f(W[A.b][1]) + "; " + f(W[A.b][2]) + ") &nbsp; <b>" + W[A.c][0] + "</b> = (" + f(W[A.c][1]) + "; " + f(W[A.c][2]) + ")</p><p>Risultato = (" + f(W[A.a][1]) + " − " + f(W[A.b][1]) + " + " + f(W[A.c][1]) + "; " + f(W[A.a][2]) + " − " + f(W[A.b][2]) + " + " + f(W[A.c][2]) + ") = <b>(" + f(A.v[0]) + "; " + f(A.v[1]) + ")</b></p><p>Parola più vicina per coseno (escluse le tre scelte): <b>" + W[n.i][0] + "</b> (cos = " + f(n.c) + ")</p><p class='hint'>Poi: " + A.nn.slice(1).map(function (r) { return W[r.i][0] + " " + f(r.c); }).join(", ") + "</p>";
+  }
+  var R = 1.15;
+  function drawW() {
+    var cv = WS.cv, ctx = WS.ctx, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, S = Math.max(240, Math.round(r.width)); cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var X = function (x) { return S / 2 + x * S / (2 * R); }, Y = function (y) { return S / 2 - y * S / (2 * R); };
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, S, S); ctx.lineWidth = 1;
+    for (var k = -1; k <= 1; k += 0.5) { ctx.strokeStyle = k === 0 ? "#9aa5a5" : "#e6ecec"; ctx.beginPath(); ctx.moveTo(X(k), 0); ctx.lineTo(X(k), S); ctx.moveTo(0, Y(k)); ctx.lineTo(S, Y(k)); ctx.stroke(); }
+    ctx.fillStyle = MUTE; ctx.font = "13px system-ui"; ctx.textAlign = "left"; ctx.fillText("asse 1", S - 48, Y(0) - 5); ctx.fillText("asse 2", X(0) + 5, 14);
+    var sel = WS.sel, nbset = {}; (WS.nb || []).forEach(function (q) { nbset[q.i] = 1; });
+    var A = ana(), emph = {};
+    if (WS.view === "ana") { emph[A.a] = 1; emph[A.b] = 1; emph[A.c] = 1; emph[A.nn[0].i] = 1; }
+    function arrow(x0, y0, x1, y1, col, dash) { ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 2.4; ctx.setLineDash(dash ? [6, 4] : []); ctx.beginPath(); ctx.moveTo(X(x0), Y(y0)); ctx.lineTo(X(x1), Y(y1)); ctx.stroke(); ctx.setLineDash([]); var an = Math.atan2(Y(y1) - Y(y0), X(x1) - X(x0)); ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x1) - 10 * Math.cos(an - 0.4), Y(y1) - 10 * Math.sin(an - 0.4)); ctx.lineTo(X(x1) - 10 * Math.cos(an + 0.4), Y(y1) - 10 * Math.sin(an + 0.4)); ctx.closePath(); ctx.fill(); }
+    if (WS.view === "nb") {
+      ctx.strokeStyle = "rgba(192,97,27,.35)"; ctx.lineWidth = 1.5; (WS.nb || []).forEach(function (q) { ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(W[q.i][1]), Y(W[q.i][2])); ctx.stroke(); });
+      arrow(0, 0, W[sel][1], W[sel][2], ORG, false);
+    } else {
+      var a = W[A.a], b = W[A.b], c = W[A.c];
+      ctx.strokeStyle = "rgba(15,110,110,.4)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(A.v[0]), Y(A.v[1])); ctx.stroke();
+      arrow(b[1], b[2], a[1], a[2], NAVY, false); arrow(c[1], c[2], A.v[0], A.v[1], NAVY, true);
+    }
+    ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(X(0), Y(0), 3, 0, 6.3); ctx.fill();
+    WS.pos = [];
+    W.forEach(function (w, i) { var x = X(w[1]), y = Y(w[2]), on = (WS.view === "nb" && (i === sel || nbset[i])) || emph[i]; WS.pos.push([x, y]); ctx.beginPath(); ctx.arc(x, y, on ? 6.5 : 5, 0, 6.3); ctx.fillStyle = wcol(i); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke(); if (WS.view === "nb" && i === sel) { ctx.beginPath(); ctx.arc(x, y, 10, 0, 6.3); ctx.strokeStyle = ORG; ctx.lineWidth = 2.5; ctx.stroke(); } if (WS.view === "ana" && i === A.nn[0].i) { ctx.beginPath(); ctx.arc(x, y, 11, 0, 6.3); ctx.strokeStyle = TEAL; ctx.lineWidth = 3; ctx.stroke(); } });
+    if (WS.view === "ana") { var vx = X(A.v[0]), vy = Y(A.v[1]); ctx.strokeStyle = TEAL; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(vx - 7, vy - 7); ctx.lineTo(vx + 7, vy + 7); ctx.moveTo(vx + 7, vy - 7); ctx.lineTo(vx - 7, vy + 7); ctx.stroke(); }
+    /* etichette con anti-sovrapposizione */
+    var boxes = [], order = W.map(function (_, i) { return i; }).sort(function (a, b) { return (priority(b) - priority(a)); });
+    function priority(i) { return (i === sel && WS.view === "nb" ? 3 : 0) + ((nbset[i] && WS.view === "nb") || emph[i] ? 2 : 0); }
+    ctx.font = "bold 14px system-ui"; ctx.textAlign = "left";
+    if (WS.view === "ana") { var rw = ctx.measureText("risultato").width, rx = Math.min(S - rw - 4, Math.max(4, X(A.v[0]) - rw / 2)), ry = Math.max(16, Y(A.v[1]) + 28); ctx.fillStyle = TEAL; ctx.fillText("risultato", rx, ry); boxes.push({ x: rx, y: ry - 13, w: rw, h: 17 }); }
+    ctx.font = "13px system-ui";
+    order.forEach(function (i) { var w = W[i][0], tw = ctx.measureText(w).width, p = WS.pos[i], pr = priority(i), cands = [[p[0] + 8, p[1] - 7], [p[0] + 8, p[1] + 15], [p[0] - tw - 8, p[1] - 7], [p[0] - tw - 8, p[1] + 15]], placed = false;
+      for (var c = 0; c < cands.length && !placed; c++) { var bx = { x: cands[c][0], y: cands[c][1] - 12, w: tw, h: 15 }; if (bx.x < 2 || bx.x + bx.w > S - 2 || bx.y < 2 || bx.y + bx.h > S - 2) continue; var hit = boxes.some(function (o) { return !(bx.x > o.x + o.w || bx.x + bx.w < o.x || bx.y > o.y + o.h || bx.y + bx.h < o.y); }); if (!hit) { boxes.push(bx); ctx.fillStyle = pr ? INK : MUTE; ctx.font = (pr ? "bold " : "") + "13px system-ui"; ctx.fillText(w, bx.x, bx.y + 12); placed = true; } } });
+  }
+  function renderW() { wlist(); wana(); drawW(); }
+  function selW(i) { WS.sel = i; WS.view = "nb"; $("wPick").value = i; renderW(); }
+  $("wPick").addEventListener("change", function () { selW(+$("wPick").value); });
+  ["aA", "aB", "aC"].forEach(function (id) { $(id).addEventListener("change", function () { WS.view = "ana"; renderW(); }); });
+  $("cvW").addEventListener("pointerdown", function (ev) { var r = WS.cv.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top, best = -1, bd = 1e9; WS.pos.forEach(function (p, i) { var d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = i; } }); if (best >= 0 && bd < 20) selW(best); });
+
+  /* ======================= 3. PAROLA SUCCESSIVA ======================= */
+  var CORP = {
+    a: "Il gatto dorme sul divano. Il gatto mangia il pesce. Il cane dorme sul tappeto. Il cane mangia un osso. Il gatto guarda il cane. Il cane guarda il gatto. Il gatto dorme.",
+    m: "Trenta giorni ha novembre, con april, giugno e settembre. Di ventotto ce n’è uno, tutti gli altri ne han trentuno."
+  };
+  var N = { tok: [], vocab: [], rows: [], cnt: {}, tot: {}, w: "il", mode: "s", T: 1 };
+  function tokN(s) { return (s.toLowerCase().replace(/’/g, "'").match(/\p{L}+'?|[.!?]/gu) || []).map(function (t) { return /^[.!?]$/.test(t) ? "." : t; }); }
+  function buildN() {
+    N.tok = tokN($("nTxt").value); N.cnt = {}; N.tot = {}; var seen = {}, order = [];
+    N.tok.forEach(function (w) { if (!seen[w]) { seen[w] = 1; order.push(w); } });
+    for (var i = 0; i + 1 < N.tok.length; i++) { var a = N.tok[i], b = N.tok[i + 1]; if (a === ".") continue; N.cnt[a] = N.cnt[a] || {}; N.cnt[a][b] = (N.cnt[a][b] || 0) + 1; N.tot[a] = (N.tot[a] || 0) + 1; }
+    N.order = order; N.rows = order.filter(function (w) { return N.tot[w]; }); N.vocab = order;
+    if (N.rows.indexOf(N.w) < 0) N.w = N.rows.indexOf("il") >= 0 ? "il" : (N.rows[0] || "");
+  }
+  function cands(w) { var c = N.cnt[w] || {}, o = []; N.order.forEach(function (x) { if (c[x]) o.push({ w: x, n: c[x], p: c[x] / N.tot[w] }); }); return o; }
+  function tempP(cs, T) { var q = cs.map(function (c) { return Math.pow(c.p, 1 / T); }), s = q.reduce(function (a, b) { return a + b; }, 0); return q.map(function (v) { return v / s; }); }
+  function renderN() {
+    buildN(); var words = N.tok.filter(function (w) { return w !== "."; });
+    $("nInfo").textContent = "Il testo ha " + words.length + " parole (" + N.order.filter(function (w) { return w !== "."; }).length + " diverse) e " + (N.tok.length - words.length) + " punti. Il “modello” conta solo quali coppie di parole vicine compaiono.";
+    $("nW").innerHTML = N.rows.map(function (w) { return "<option value='" + esc(w) + "'>" + esc(w) + "</option>"; }).join(""); $("nW").value = N.w;
+    var h = "<tr><th>corrente ↓ · segue →</th>" + N.vocab.map(function (w) { return "<th>" + esc(w) + "</th>"; }).join("") + "</tr>";
+    N.rows.forEach(function (r) { h += "<tr" + (r === N.w ? " class='sel'" : "") + "><td class='rowsel' data-w='" + esc(r) + "' tabindex='0' role='button'>" + esc(r) + "</td>" + N.vocab.map(function (c) { var n = (N.cnt[r] || {})[c] || 0; return "<td class='" + (n ? "" : "z") + "' style='" + (n ? "background:rgba(15,110,110," + Math.min(0.55, 0.12 + n * 0.1) + ")" : "") + "'>" + n + "</td>"; }).join("") + "</tr>"; });
+    $("nTbl").innerHTML = h;
+    Array.prototype.forEach.call($("nTbl").querySelectorAll(".rowsel"), function (td) { var f = function () { N.w = td.getAttribute("data-w"); renderN(); }; td.onclick = f; td.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); f(); } }; });
+    renderBars(); genAll(false);
+  }
+  function renderBars() {
+    var cs = cands(N.w), tp = tempP(cs, N.T), samp = N.mode === "s" && N.T !== 1;
+    if (!cs.length) { $("nBars").innerHTML = "<p>Nessuna parola segue questa.</p>"; $("nBarsT").textContent = ""; return; }
+    var sorted = cs.map(function (c, i) { return { c: c, q: tp[i] }; }).sort(function (a, b) { return b.c.n - a.c.n; });
+    $("nBars").innerHTML = "<p style='margin:0 0 4px;font-size:.95rem'>Dopo «<b>" + esc(N.w) + "</b>» (compare " + N.tot[N.w] + " volte seguita da qualcosa):</p>" + sorted.map(function (r) { return "<div class='pb'><span class='nm'>" + esc(r.c.w) + "</span><span class='bb'><i style='width:" + Math.round(r.c.p * 100) + "%;background:#9db3d6'></i>" + (samp ? "<i style='width:" + Math.round(r.q * 100) + "%;background:rgba(192,97,27,.75);height:45%;top:auto'></i>" : "") + "</span><span class='vl'>" + r.c.n + "/" + N.tot[N.w] + " = " + fmt(r.c.p * 100, 0) + " %" + (samp ? "<br><span style='color:#C0611B'>T: " + fmt(r.q * 100, 0) + " %</span>" : "") + "</span></div>"; }).join("");
+    $("nBarsT").innerHTML = "P(parola successiva | «" + esc(N.w) + "») = conteggio / " + N.tot[N.w] + "." + (samp ? " Barra arancione: probabilità dopo la temperatura T = " + fmt(N.T, 1) + ", cioè p<sup>1/T</sup> riscalato a somma 1." : "");
+  }
+  function genOne(r) {
+    var w = N.w, out = [w], len = +$("nLen").value;
+    while (out.length < len) {
+      var cs = cands(w); if (!cs.length) break; var pick;
+      if (N.mode === "g") { pick = cs.reduce(function (b, c) { return c.n > b.n ? c : b; }, cs[0]); }
+      else { var tp = tempP(cs, N.T), u = r(), acc = 0, k = 0; for (k = 0; k < cs.length; k++) { acc += tp[k]; if (u < acc) break; } pick = cs[Math.min(k, cs.length - 1)]; }
+      out.push(pick.w); w = pick.w; if (w === ".") break;
+    }
+    var s = out.join(" ").replace(/ \./g, "."); if (out[out.length - 1] !== ".") s += " …"; return s;
+  }
+  function genAll(five) { if (!N.rows.length) { $("nOut").textContent = ""; return; } var r = rng(+$("nSeed").value || 0), n = five ? 5 : 1, o = []; for (var i = 0; i < n; i++) o.push(genOne(r)); $("nOut").innerHTML = o.map(function (s) { return "<div>" + esc(s) + "</div>"; }).join(""); N.last = o; }
+  $("nPre").addEventListener("change", function () { $("nTxt").value = CORP[$("nPre").value]; N.w = $("nPre").value === "a" ? "il" : "trenta"; renderN(); });
+  $("nTxt").addEventListener("input", renderN);
+  $("nW").addEventListener("change", function () { N.w = $("nW").value; renderN(); });
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=nMode]"), function (e) { e.addEventListener("change", function () { N.mode = e.value; $("nTRow").style.opacity = N.mode === "g" ? 0.45 : 1; renderBars(); genAll(false); }); });
+  $("nT").addEventListener("input", function () { N.T = +$("nT").value; $("nTV").textContent = fmt(N.T, 1); renderBars(); genAll(false); });
+  $("nLen").addEventListener("input", function () { $("nLenV").textContent = $("nLen").value; genAll(false); });
+  $("nSeed").addEventListener("input", function () { genAll(false); });
+  $("nGo").onclick = function () { genAll(false); }; $("nGo5").onclick = function () { genAll(true); };
+  $("nNew").onclick = function () { $("nSeed").value = (+$("nSeed").value + 1) % 10000; genAll(false); };
+  $("nTxt").value = CORP.a;
+
+  /* ------------------------------ schede ------------------------------ */
+  var CUR = "1";
+  function tab(w) { CUR = w; ["1", "2", "3"].forEach(function (k) { $("p" + k).hidden = k !== w; $("tb" + k).classList.toggle("on", k === w); }); if (w === "2") renderW(); }
+  $("tb1").onclick = function () { tab("1"); }; $("tb2").onclick = function () { tab("2"); }; $("tb3").onclick = function () { tab("3"); };
+  window.addEventListener("resize", function () { if (CUR === "2") drawW(); });
+
+  /* --------------------------- esperienze guidate --------------------------- */
+  function init1(o) { tab("1"); ["f1", "f2", "f3", "f4"].forEach(function (id, k) { setv(id, (o.f && o.f[k] !== undefined) ? o.f[k] : DEF[k]); }); setc("tStop", !!o.stop); setc("tIdf", !!o.idf); setv("tA", o.a || 0); setv("tB", o.b === undefined ? 1 : o.b); setv("tQ", o.q || "dove dorme il gatto?"); }
+  function init3(o) { tab("3"); $("nPre").value = "a"; setv("nPre", "a"); var m = document.querySelector("input[name=nMode][value=" + (o.mode || "s") + "]"); m.checked = true; m.dispatchEvent(new Event("change", { bubbles: true })); setv("nT", o.T || 1); setv("nSeed", o.seed || 7); setv("nLen", o.len || 10); setv("nW", o.w || "il"); }
+  var EXPS = [
+    { id: "t1", title: "Conteggi e coseno tra frasi", time: "8 min", desc: "Trasformare le frasi in vettori di conteggi e misurare quanto si assomigliano.", onShow: function () { tab("1"); }, steps: [
+      { t: "Quattro frasi", x: "Ecco quattro frasi di esempio. Per un calcolatore un testo è solo una successione di simboli: per confrontare le frasi le trasformiamo in <b>numeri</b>.", el: "#tPh", apply: function () { init1({}); } },
+      { t: "Ogni frase è un vettore", x: "La tabella ha una colonna per ogni parola diversa e conta quante volte compare in ciascuna frase. Ogni <b>riga è il vettore</b> di una frase. Si chiama <b>bag of words</b>: un “sacco di parole”, l’ordine non conta.", el: "#tTab" },
+      { t: "Quanto si assomigliano?", x: "La matrice mostra il <b>coseno</b> tra ogni coppia. F1 e F2 («il gatto dorme sul divano» e «il cane dorme sul tappeto») hanno coseno <b>0,60</b>: condividono 3 parole su 5.", el: "#tCosP" },
+      { t: "Il calcolo, con i numeri", x: "Per F1 e F2: prodotto scalare = <b>3,00</b> (parole in comune: il, dorme, sul); le norme sono <b>2,24</b> e <b>2,24</b>. Coseno = 3,00 / (2,24 × 2,24) = <b>0,60</b>.", el: "#tPair" },
+      { t: "Togliere le parole vuote", x: "“il” e “sul” non dicono di che cosa parla una frase. Attiva <b>Ignora le parole vuote</b>: il coseno F1–F2 scende a <b>0,33</b> (resta solo “dorme”).", el: ["#tOpt", "#tCosP"], btn: "Ignora parole vuote", apply: function () { setc("tStop", true); } },
+      { t: "Coseno 0: niente in comune", x: "F1 («il gatto dorme sul divano») e F4 (la frase su Roma e la pioggia) non hanno parole utili in comune: coseno <b>0,00</b>, cioè vettori <b>perpendicolari</b> (angolo 90°). Prima di togliere le parole vuote era 0,17, solo per colpa di “il”.", el: "#tCosP" },
+      { t: "Il limite: l’ordine non conta", x: "Cambiamo F1 in «il cane guarda il gatto» e F2 in «il gatto guarda il cane»: significati opposti, ma stesse parole, quindi coseno <b>1,00</b>. Il bag of words ignora l’ordine.", el: ["#tPh", "#tCosP"], btn: "Prova", apply: function () { setv("f1", "Il cane guarda il gatto"); setv("f2", "Il gatto guarda il cane"); } }
+    ] },
+    { id: "t2", title: "Un motore di ricerca minimo", time: "7 min", desc: "Quale frase risponde a una domanda? Si cerca la frase con coseno maggiore.", onShow: function () { tab("1"); }, steps: [
+      { t: "Frasi come archivio", x: "Usiamo le quattro frasi come piccolo archivio di documenti, con le parole vuote ignorate. Una <b>domanda</b> si trasforma in vettore allo stesso modo.", el: "#tSea", apply: function () { init1({ stop: true, q: "dove dorme il gatto?" }); } },
+      { t: "Le parole della domanda", x: "Dalla domanda «dove dorme il gatto?» restano <b>dorme</b> e <b>gatto</b> (“dove” e “il” sono parole vuote).", el: "#tQT" },
+      { t: "La classifica", x: "F1 («il gatto dorme sul divano») ha coseno <b>0,82</b>: contiene entrambe le parole. F2 e F3 ne contengono una sola e hanno <b>0,41</b>. F4 ha 0: nessuna parola in comune. La migliore è in cima, in arancione.", el: "#tRank" },
+      { t: "Cambia la domanda", x: "Con «chi mangia il pesce?» le parole utili sono mangia e pesce: vince F3 con <b>0,82</b>.", el: ["#tSea", "#tRank"], btn: "Cambia domanda", apply: function () { setv("tQ", "chi mangia il pesce?"); } },
+      { t: "TF-IDF: le parole rare contano di più", x: "Attiva <b>TF-IDF</b>: “gatto” e “dorme” compaiono in 2 frasi su 4, “pesce” in 1. Le parole rare pesano di più. Con la domanda attuale F3 ottiene <b>0,94</b>.", el: ["#tOpt", "#tRank"], btn: "Usa TF-IDF", apply: function () { setc("tIdf", true); } },
+      { t: "Parole diverse, stesso significato", x: "Scrivi «dove riposa il micio?»: nessuna parola compare nelle frasi, tutti i coseni sono <b>0</b>. Il motore non capisce i <b>sinonimi</b>: per questo servono rappresentazioni in cui parole simili stanno vicine (scheda “Parole nello spazio”).", el: ["#tSea", "#tRank"], btn: "Prova", apply: function () { setc("tIdf", false); setv("tQ", "dove riposa il micio?"); } }
+    ] },
+    { id: "t3", title: "Parole nello spazio e analogie", time: "7 min", desc: "Parole come punti: vicinanza per coseno e calcoli con i vettori.", onShow: function () { tab("2"); }, steps: [
+      { t: "Parole come punti", x: "Ogni parola ha due coordinate. Attenzione: sono <b>vettori illustrativi scelti a mano</b>, non appresi da un modello. I colori indicano gruppi di significato.", el: "#cvW", apply: function () { tab("2"); WS.sel = 13; WS.view = "nb"; $("wPick").value = 13; renderW(); } },
+      { t: "Le parole vicine a «gatto»", x: "La freccia arancione parte dall’origine e arriva a «gatto». Le parole con la freccia nella stessa direzione hanno coseno vicino a 1: la più vicina è <b>cane</b> (coseno 0,99), poi cavallo.", el: ["#wSel", "#cvW"] },
+      { t: "Una parola di un altro gruppo", x: "Scegli «Roma»: i vicini sono città e paesi (prima <b>Italia</b>, coseno 1,00), non animali.", el: ["#wSel", "#cvW"], btn: "Scegli Roma", apply: function () { selW(7); } },
+      { t: "re − uomo + donna", x: "Nel riquadro l’analogia “re sta a uomo come ? sta a donna”: si calcola il vettore <b>re − uomo + donna</b> (la freccia “da uomo a re” riportata a partire da donna) e si cerca la parola più vicina.", el: ["#wAna", "#cvW"], btn: "Calcola", apply: function () { $("aA").value = 2; $("aB").value = 0; $("aC").value = 1; WS.view = "ana"; renderW(); } },
+      { t: "Il risultato", x: "Il risultato è il punto con la ✕, vicino a <b>regina</b> (coseno 1,00). Funziona perché “da uomo a re” e “da donna a regina” sono quasi lo stesso spostamento.", el: "#aOut" },
+      { t: "Parigi − Francia + Italia", x: "Stesso trucco con paesi e capitali: la parola più vicina è <b>Roma</b> (coseno 1,00).", el: ["#wAna", "#cvW"], btn: "Prova", apply: function () { $("aA").value = 9; $("aB").value = 8; $("aC").value = 6; WS.view = "ana"; renderW(); } },
+      { t: "Con i dati veri", x: "Qui funziona perché le coordinate sono state <b>disegnate</b> per farlo funzionare. Nei modelli veri le dimensioni sono centinaia e i vettori si ricavano dal testo; le analogie funzionano spesso solo in parte.", el: ".warn" }
+    ] },
+    { id: "t4", title: "Prevedere la parola successiva", time: "8 min", desc: "Un modello a bigrammi: probabilità, scelta della parola e temperatura.", onShow: function () { tab("3"); }, steps: [
+      { t: "Un piccolo testo", x: "Sette frasi inventate su un gatto e un cane. Il modello conta, per ogni parola, <b>quali parole la seguono</b>: è la tabella qui sotto (“bigrammi”, coppie di parole vicine).", el: "#nCorp", apply: function () { init3({ mode: "s", T: 1, seed: 7, len: 10, w: "il" }); } },
+      { t: "Dopo «il»", x: "«il» compare 10 volte seguito da qualcosa: <b>gatto</b> 5, <b>cane</b> 4, <b>pesce</b> 1. Le probabilità sono i conteggi divisi per 10.", el: "#nProb" },
+      { t: "Dopo «gatto»", x: "Scegli «gatto»: dopo di lui ci sono più possibilità. La più frequente è <b>dorme</b>: 2 volte su 5, cioè 40 %.", el: "#nProb", btn: "Scegli «gatto»", apply: function () { setv("nW", "gatto"); } },
+      { t: "Sempre la più probabile", x: "Con <b>greedy</b> si prende ogni volta la parola più probabile, a partire da «gatto». Esce sempre la stessa frase: <b>gatto dorme sul divano.</b>. Prevedibile, ma ripetitiva.", el: ["#nGen", "#nOut"], btn: "Greedy", apply: function () { var m = document.querySelector("input[name=nMode][value=g]"); m.checked = true; m.dispatchEvent(new Event("change", { bubbles: true })); } },
+      { t: "A sorte, con un seme", x: "Con la scelta <b>a sorte</b> si estrae la parola successiva con la sua probabilità. Con T = 1 e seme 7, partendo da «gatto», esce: <b>gatto dorme sul tappeto.</b>. Cambia seme per frasi diverse.", el: ["#nGen", "#nOut"], btn: "A sorte, T = 1", apply: function () { var m = document.querySelector("input[name=nMode][value=s]"); m.checked = true; m.dispatchEvent(new Event("change", { bubbles: true })); setv("nT", 1); } },
+      { t: "Temperatura alta", x: "La <b>temperatura</b> cambia le probabilità: con T = 2 le barre arancioni si appiattiscono (dopo «gatto», «dorme» scende a 32 %). Le scelte diventano più varie e più “strane”.", el: ["#nGen", "#nProb"], btn: "T = 2", apply: function () { setv("nT", 2); } },
+      { t: "Temperatura bassa", x: "Con T = 0,3 «dorme» sale a 77 %: ci si avvicina al greedy. T bassa = prevedibile, T alta = creativa.", el: ["#nGen", "#nProb"], btn: "T = 0,3", apply: function () { setv("nT", 0.3); } },
+      { t: "Il legame con i modelli linguistici", x: "Un modello linguistico fa lo stesso compito su scala enorme: guarda migliaia di parole di contesto, usa una rete neurale invece di una tabella, ma produce una distribuzione di probabilità sulla parola successiva e ne sceglie una, anche con una temperatura.", el: "#nGen" }
+    ] }
+  ];
+  window.__t = { B: B, WS: WS, N: N, W: W, tab: tab, renderB: renderB, selW: selW, ana: ana, nearest: nearest, cands: cands, genOne: genOne, init1: init1, init3: init3, cosv: cosv };
+  Tour.init(EXPS);
+  renderB(); renderN();
+})();
+</script>
+</body>
+</html>

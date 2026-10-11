@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probabilità e Naive Bayes</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .bz-wide{grid-column:1/-1}
+  main.app>section{min-width:0}
+  .hint{font-size:.875rem}
+  .bz-tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .bz-tw table{font-size:.88rem}
+  .bz-tw th,.bz-tw td{padding:4px 7px;white-space:nowrap}
+  .bz-tw th{white-space:normal;font-size:.76rem}
+  .bz-scroll{max-height:300px;overflow-y:auto}
+  .bz-tag{display:inline-block;font-size:.8rem;font-weight:700;padding:1px 8px;border-radius:999px;color:#fff}
+  .bz-tag.sp{background:#C0611B}.bz-tag.ham{background:#0F6E6E}
+  .bz-f{font:.9rem/1.7 ui-monospace,Menlo,Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:pre}
+  .bz-bars .b{display:grid;grid-template-columns:110px minmax(0,1fr) 56px;gap:8px;align-items:center;margin-top:6px;font-size:.9rem}
+  .bz-bars .t{height:18px;background:#e1e8e8;border-radius:5px;overflow:hidden}
+  .bz-bars .t i{display:block;height:100%}
+  .bz-words{display:flex;flex-wrap:wrap;gap:6px 14px}
+  .bz-words label{display:flex;gap:5px;align-items:center;font-size:.95rem}
+  .bz-words input{width:18px;height:18px}
+  .bz-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:8px}
+  .bz-tile{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+  .bz-tile small{display:block;color:var(--mute);font-size:.8rem}.bz-tile b{font-size:1.15rem;color:var(--navy)}
+  .bz-cm{border-collapse:collapse;margin-top:6px;width:100%;table-layout:fixed}
+  .bz-cm th{white-space:normal;text-transform:none;letter-spacing:0;font-size:.85rem}
+  .bz-cm th,.bz-cm td{border:1px solid var(--line);padding:5px 4px;text-align:center;font-size:.9rem}
+  .bz-cm td b{font-size:1.1rem}
+  .bz-big{font-size:1.15rem}
+  .bz-res{font-weight:600}
+  input[type=text].bz-t{font:inherit;font-size:.92rem;padding:6px 8px;border:1px solid var(--navy);border-radius:6px;flex:1 1 200px;min-width:0}
+  .bz-ok{color:#0F6E6E}.bz-bad{color:#B3261E}
+  .bz-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  @media(max-width:700px){.bz-cols{grid-template-columns:minmax(0,1fr)}.bz-bars .b{grid-template-columns:90px minmax(0,1fr) 52px}}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Probabilità e Naive Bayes</h1><p>aggiornare le probabilità con le prove: dal test medico al filtro antispam</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="wrap" style="padding-top:12px"><div class="tabs" role="tablist"><button id="tbB" class="on" role="tab">Il teorema di Bayes con le frequenze</button><button id="tbS" role="tab">Filtro antispam Naive Bayes</button></div></div>
+
+<!-- ============ BAYES ============ -->
+<main class="app" id="pB">
+  <section>
+    <canvas id="cvG" width="640" height="400" aria-label="Griglia di 1000 persone: malati con test positivo, malati con test negativo, sani con test positivo, sani con test negativo"></canvas>
+    <p class="hint" id="bLeg"></p>
+    <div class="panel read" id="bOut" aria-live="polite" style="margin-top:12px"><h2>Se il test è positivo…</h2><div id="bOutT"></div></div>
+  </section>
+  <section>
+    <div class="panel" id="bPar"><h2>Il test</h2>
+      <div class="row" id="bPrevRow"><label for="bPrev">Prevalenza (malati)</label><input type="range" id="bPrev" min="0.1" max="50" step="0.1" value="1"><output id="bPrevV">1%</output></div>
+      <div class="row" id="bSensRow"><label for="bSens">Sensibilità</label><input type="range" id="bSens" min="50" max="100" step="1" value="90"><output id="bSensV">90%</output></div>
+      <div class="row" id="bSpecRow"><label for="bSpec">Specificità</label><input type="range" id="bSpec" min="50" max="100" step="1" value="90"><output id="bSpecV">90%</output></div>
+      <div class="row"><label><input type="checkbox" id="bHi"> Metti in evidenza chi risulta positivo al test</label></div>
+      <p class="hint">Sensibilità: quota di malati che il test trova. Specificità: quota di sani che il test lascia in pace.</p>
+    </div>
+    <div class="panel read" id="bFP"><h2>Il teorema di Bayes con i numeri</h2><div class="bz-f" id="bF"></div></div>
+    <div class="panel read" id="bIntu"><h2>Intuizione e risultato</h2>
+      <div class="row"><label for="bGuess">La tua intuizione: se il test è positivo, quanto sei sicuro di essere malato?</label><input type="range" id="bGuess" min="0" max="100" step="1" value="90"><output id="bGuessV">90%</output></div>
+      <div class="bz-bars" id="bBars"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ SPAM ============ -->
+<main class="app" id="pS" hidden>
+  <section>
+    <div class="panel" id="sTrainP"><h2>Email di addestramento</h2>
+      <div class="bz-tw"><table id="sTrain" aria-label="Dodici email di addestramento con la loro classe"><thead><tr><th>#</th><th>testo</th><th>classe</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint">Il vocabolario ha 8 parole. In un caso reale le parole fuori vocabolario verrebbero ignorate.</p>
+    </div>
+    <div class="panel read" id="sCounts"><h2>Conteggi e probabilità</h2>
+      <div class="row" id="sAlphaRow" style="margin-top:0"><label for="sAlpha">Smoothing di Laplace α</label><input type="range" id="sAlpha" min="0" max="2" step="0.1" value="1"><output id="sAlphaV">1,0</output></div>
+      <p id="sPriors" style="margin:8px 0"></p>
+      <div class="bz-tw"><table id="sTab" aria-label="Conteggi delle parole per classe e probabilità condizionate"></table></div>
+      <p class="hint" id="sFormula"></p>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="sNew"><h2>Una nuova email</h2>
+      <div class="bz-words" id="sWords" role="group" aria-label="Parole presenti nella nuova email"></div>
+      <div class="row"><label for="sText">oppure scrivi</label><input type="text" class="bz-t" id="sText" placeholder="es. vinci gratis domani" autocomplete="off"></div>
+      <p class="hint" id="sUnk"></p>
+    </div>
+    <div class="panel read" id="sCalc" aria-live="polite"><h2>Il calcolo passo per passo</h2>
+      <div class="bz-tw"><table id="sCalcT"></table></div>
+      <p id="sRes" style="margin-top:10px"></p>
+      <div class="row"><label for="sThr">Soglia: spam se P(spam) ≥</label><input type="range" id="sThr" min="0.05" max="0.95" step="0.05" value="0.5"><output id="sThrV">0,50</output></div>
+    </div>
+  </section>
+  <section class="bz-wide">
+    <div class="panel" id="sTestP"><h2>Un piccolo insieme di test</h2>
+      <p class="hint" style="margin-top:0">24 email nuove di cui conosciamo la classe vera: il filtro le giudica con la soglia scelta.</p>
+      <div class="bz-cols">
+        <div><div class="bz-tw bz-scroll"><table id="sTest" aria-label="Email di test con classe vera, probabilità di spam e esito"><thead><tr><th>#</th><th>parole</th><th>vera</th><th>P(spam)</th><th>esito</th></tr></thead><tbody></tbody></table></div></div>
+        <div>
+          <div class="row" style="margin-top:0;display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap"><label for="sThr2">Soglia</label><input type="range" id="sThr2" min="0.05" max="0.95" step="0.05" value="0.5" style="flex:1 1 130px"><output id="sThr2V">0,50</output></div>
+          <table class="bz-cm" id="sCM" aria-label="Matrice di confusione"></table>
+          <div class="bz-tiles" id="sTiles"></div>
+          <canvas id="cvT" width="520" height="210" data-aspect="1" aria-label="Precisione, richiamo e F1 al variare della soglia" style="margin-top:10px;aspect-ratio:520/210"></canvas>
+          <div class="hint"><span class="sw" style="background:#1F3864"></span>precisione &nbsp; <span class="sw" style="background:#C0611B"></span>richiamo &nbsp; <span class="sw" style="background:#2E7D32"></span>F1 &nbsp; | soglia attuale</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel read" id="sImb"><h2>Classi sbilanciate: l’accuratezza inganna</h2>
+      <p style="margin-top:0">Nella posta vera gli spam non sono metà del totale. Applichiamo il filtro (con richiamo e falsi allarmi misurati sul test) a <b>10 000 email</b>.</p>
+      <div class="row"><label for="sQ">Quota di spam nella posta</label><input type="range" id="sQ" min="1" max="50" step="1" value="1"><output id="sQV">1%</output></div>
+      <div class="bz-cols"><div id="sImbT"></div><div id="sImbR"></div></div>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function f(x, d) { return (+x).toFixed(d).replace(".", ",").replace("-", "−"); }
+  function pct(x, d) { return f(x * 100, d === undefined ? 1 : d) + "%"; }
+  var SUP = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "-": "⁻" };
+  function fs(x) {
+    if (x === 0) return "0"; if (x >= 0.01) return f(x, 4);
+    var e = Math.floor(Math.log10(x)), m = x / Math.pow(10, e); if (+m.toFixed(2) >= 10) { m /= 10; e++; }
+    return f(m, 2) + "·" + "10" + String(e).split("").map(function (c) { return SUP[c] || c; }).join("");
+  }
+  function setupCanvas(cv) { return { cv: cv, ctx: cv.getContext("2d") }; }
+  function fit(c, aspect) { var cv = c.cv, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, w = Math.max(160, Math.round(r.width)); cv._W = w; cv._H = Math.round(aspect ? r.height : w * cv.dataset.r); cv.width = Math.round(w * dpr); cv.height = Math.round(cv._H * dpr); c.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+
+  /* =============================== BAYES =============================== */
+  var cvG = $("cvG"); cvG.dataset.r = 0.625; var CG = setupCanvas(cvG);
+  var B = { prev: 1, sens: 90, spec: 90, hi: false, guess: 90 };
+  function calcB() {
+    var p = B.prev / 100, se = B.sens / 100, sp = B.spec / 100, sick = 1000 * p, TP = sick * se, FN = sick - TP, FP = (1000 - sick) * (1 - sp), TN = 1000 - sick - FP;
+    var tp = Math.round(TP), sk = Math.round(sick), fn = sk - tp, fp = Math.round(FP), tn = 1000 - sk - fp;
+    var pplus = se * p + (1 - sp) * (1 - p), ppv = pplus > 0 ? se * p / pplus : 0, pneg = (1 - se) * p + sp * (1 - p), npv = pneg > 0 ? sp * (1 - p) / pneg : 0;
+    return { p: p, se: se, sp: sp, TP: TP, FP: FP, FN: FN, TN: TN, tp: tp, fn: fn, fp: fp, tn: tn, sk: sk, pplus: pplus, ppv: ppv, npv: npv, exact: Math.abs(TP - tp) < 1e-9 && Math.abs(FP - fp) < 1e-9 && Math.abs(sick - sk) < 1e-9 };
+  }
+  var COL = { tp: "#C0611B", fn: "#EBC9A6", fp: "#1F3864", tn: "#DCE3E8" };
+  function drawG() {
+    fit(CG, false); var c = calcB(), ctx = CG.ctx, W = cvG._W, cols = 40, cell = W / cols, seq = [];
+    ["tp", "fn", "fp", "tn"].forEach(function (k) { for (var i = 0; i < c[k]; i++) seq.push(k); });
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, cvG._H);
+    seq.forEach(function (k, i) {
+      var x = (i % cols) * cell, y = Math.floor(i / cols) * cell, neg = (k === "fn" || k === "tn"), dim = B.hi && neg;
+      ctx.globalAlpha = dim ? 0.25 : 1; ctx.fillStyle = COL[k]; ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+      if (k === "fn") { ctx.strokeStyle = "#C0611B"; ctx.lineWidth = 1; ctx.strokeRect(x + 1.5, y + 1.5, cell - 3, cell - 3); }
+      ctx.globalAlpha = 1;
+    });
+    var ap = c.exact ? "" : "circa ";
+    $("bLeg").innerHTML = "<span class='sw' style='background:" + COL.tp + "'></span>malati con test positivo (veri positivi): <b>" + ap + c.tp + "</b><br><span class='sw' style='background:" + COL.fn + ";border:1px solid #C0611B'></span>malati con test negativo (falsi negativi): <b>" + ap + c.fn + "</b><br><span class='sw' style='background:" + COL.fp + "'></span>sani con test positivo (falsi positivi): <b>" + ap + c.fp + "</b><br><span class='sw' style='background:" + COL.tn + "'></span>sani con test negativo (veri negativi): <b>" + ap + c.tn + "</b><br>Ogni quadratino è una persona su 1000.";
+  }
+  function renderB() {
+    var c = calcB(), ap = c.exact ? "" : "circa ", pos = c.tp + c.fp;
+    $("bPrevV").textContent = String(B.prev).replace(".", ",") + "%"; $("bSensV").textContent = B.sens + "%"; $("bSpecV").textContent = B.spec + "%";
+    $("bOutT").innerHTML = "Su 1000 persone, <b>" + ap + c.sk + "</b> sono malate (" + String(B.prev).replace(".", ",") + "%). Risultano positive <b>" + ap + c.tp + "</b> malate e <b>" + ap + c.fp + "</b> sane: in tutto <b>" + ap + pos + "</b> positivi.<br>Se il test è positivo, la probabilità di essere davvero malato è <b style='font-size:1.25rem;color:#C0611B'>" + pct(c.ppv) + "</b> (" + ap + c.tp + " su " + ap + pos + ").<br><span class='hint'>Se il test è negativo, la probabilità di essere sano è " + pct(c.npv) + ".</span>";
+    var P = f(c.p, 3).replace(/0+$/, "").replace(/,$/, ""), nn = function (x) { return f(x, 4); };
+    $("bF").textContent = "P(M|+) = P(+|M)·P(M) / P(+)\n" +
+      "P(+) = P(+|M)·P(M) + P(+|S)·P(S)\n     = " + f(c.se, 2) + "·" + f(c.p, 3) + " + " + f(1 - c.sp, 2) + "·" + f(1 - c.p, 3) + "\n     = " + nn(c.se * c.p) + " + " + nn((1 - c.sp) * (1 - c.p)) + " = " + nn(c.pplus) + "\n" +
+      "P(M|+) = " + f(c.se, 2) + "·" + f(c.p, 3) + " / " + nn(c.pplus) + " = " + nn(c.se * c.p) + " / " + nn(c.pplus) + " = " + f(c.ppv, 4) + "  →  " + pct(c.ppv) + "\n\n(M = malato, S = sano, + = test positivo)";
+    $("bGuessV").textContent = B.guess + "%";
+    var bar = function (lab, v, col) { return "<div class='b'><span>" + lab + "</span><span class='t'><i style='width:" + Math.max(0, Math.min(100, v * 100)) + "%;background:" + col + "'></i></span><b>" + pct(v, v < 0.1 ? 1 : 0) + "</b></div>"; };
+    $("bBars").innerHTML = bar("La tua intuizione", B.guess / 100, "#8896a0") + bar("Il risultato", c.ppv, "#C0611B") + "<p class='hint'>" + (Math.abs(B.guess / 100 - c.ppv) < 0.05 ? "Intuizione e calcolo coincidono." : "L’intuizione si lascia ingannare dalla sensibilità e dimentica che i sani sono molti di più dei malati: anche pochi errori sul loro gruppo producono tanti falsi positivi.") + "</p>";
+    drawG();
+  }
+  [["bPrev", "prev"], ["bSens", "sens"], ["bSpec", "spec"], ["bGuess", "guess"]].forEach(function (q) { $(q[0]).addEventListener("input", function () { B[q[1]] = +$(q[0]).value; renderB(); }); });
+  $("bHi").addEventListener("change", function () { B.hi = $("bHi").checked; renderB(); });
+
+  /* =============================== SPAM =============================== */
+  var V = ["gratis", "vinci", "offerta", "urgente", "ciao", "riunione", "domani", "grazie"];
+  var TR = [["vinci gratis offerta", 1], ["offerta urgente gratis", 1], ["gratis vinci urgente", 1], ["vinci offerta urgente", 1], ["ciao gratis offerta", 1],
+    ["ciao riunione domani", 0], ["grazie riunione domani", 0], ["ciao domani offerta", 0], ["riunione urgente domani", 0], ["grazie ciao", 0], ["domani ciao grazie", 0], ["grazie riunione", 0]];
+  var TE = [["gratis vinci", 1], ["ciao grazie", 0], ["offerta urgente", 1], ["riunione domani", 0], ["vinci gratis offerta urgente", 1], ["gratis offerta riunione", 0], ["gratis", 1], ["ciao riunione", 0],
+    ["urgente offerta gratis", 1], ["domani urgente", 0], ["vinci", 1], ["offerta urgente riunione", 0], ["gratis ciao", 1], ["grazie domani", 0], ["offerta ciao gratis", 1], ["offerta riunione", 0],
+    ["vinci domani", 1], ["ciao domani grazie", 0], ["offerta", 1], ["urgente riunione domani", 0], ["gratis domani", 1], ["grazie offerta", 0], ["urgente", 1], ["urgente ciao", 0]];
+  var N = [{}, {}], NT = [0, 0], NE = [0, 0];   // classe 0 = non spam, 1 = spam
+  V.forEach(function (w) { N[0][w] = 0; N[1][w] = 0; });
+  TR.forEach(function (e) { NE[e[1]]++; e[0].split(" ").forEach(function (w) { if (N[e[1]].hasOwnProperty(w)) { N[e[1]][w]++; NT[e[1]]++; } }); });
+  var SS = { alpha: 1, thr: 0.5, words: {}, q: 1 };
+  function pw(w, k) { return (N[k][w] + SS.alpha) / (NT[k] + SS.alpha * V.length); }
+  function classify(ws) {
+    var pr = [NE[0] / 12, NE[1] / 12], sc = [pr[0], pr[1]], lg = [Math.log(pr[0]), Math.log(pr[1])], ninf = [false, false];
+    ws.forEach(function (w) { [0, 1].forEach(function (k) { var p = pw(w, k); sc[k] *= p; if (p > 0) lg[k] += Math.log(p); else ninf[k] = true; }); });
+    var tot = sc[0] + sc[1];
+    return { sc: sc, lg: lg, ninf: ninf, pr: pr, p: tot > 0 ? sc[1] / tot : null };
+  }
+  function present() { return V.filter(function (w) { return SS.words[w]; }); }
+  function renderTrain() {
+    var h = ""; TR.forEach(function (e, i) {
+      h += "<tr><td>" + (i + 1) + "</td><td style='white-space:normal'>" + e[0].split(" ").map(function (w) { return V.indexOf(w) >= 0 ? "<b>" + w + "</b>" : w; }).join(" ") + "</td><td><span class='bz-tag " + (e[1] ? "sp" : "ham") + "'>" + (e[1] ? "spam" : "non spam") + "</span></td></tr>";
+    }); document.querySelector("#sTrain tbody").innerHTML = h;
+    var w = ""; V.forEach(function (x) { w += "<label><input type='checkbox' data-w='" + x + "'> " + x + "</label>"; }); $("sWords").innerHTML = w;
+  }
+  function renderCounts() {
+    var a = SS.alpha, h = "<thead><tr><th>parola</th><th>n. in spam</th><th>n. in non spam</th><th>P(parola | spam)</th><th>P(parola | non spam)</th></tr></thead><tbody>";
+    V.forEach(function (x) { h += "<tr><td><b>" + x + "</b></td><td>" + N[1][x] + "</td><td>" + N[0][x] + "</td><td>" + f(pw(x, 1), 4) + "</td><td>" + f(pw(x, 0), 4) + "</td></tr>"; });
+    h += "<tr><td><i>totale parole</i></td><td>" + NT[1] + "</td><td>" + NT[0] + "</td><td colspan='2'></td></tr></tbody>"; $("sTab").innerHTML = h;
+    $("sAlphaV").textContent = f(a, 1);
+    $("sPriors").innerHTML = "Probabilità a priori: P(spam) = " + NE[1] + "/12 = <b>" + f(NE[1] / 12, 4) + "</b>, P(non spam) = " + NE[0] + "/12 = <b>" + f(NE[0] / 12, 4) + "</b>.";
+    $("sFormula").innerHTML = "P(parola | classe) = (n + α) / (N + α·V), con V = " + V.length + " parole nel vocabolario, N = " + NT[1] + " (spam) o " + NT[0] + " (non spam) e α = " + f(a, 1) + ".";
+  }
+  function renderCalc() {
+    var ws = present(), c = classify(ws), a = SS.alpha, h = "<thead><tr><th>fattore</th><th>spam</th><th>non spam</th></tr></thead><tbody>";
+    h += "<tr><td>P(classe)</td><td>" + NE[1] + "/12 = " + f(c.pr[1], 4) + "</td><td>" + NE[0] + "/12 = " + f(c.pr[0], 4) + "</td></tr>";
+    ws.forEach(function (w) { h += "<tr><td>P(" + w + " | classe)</td><td>(" + N[1][w] + "+" + f(a, 1) + ")/(" + NT[1] + "+" + f(a, 1) + "·" + V.length + ") = " + f(pw(w, 1), 4) + "</td><td>(" + N[0][w] + "+" + f(a, 1) + ")/(" + NT[0] + "+" + f(a, 1) + "·" + V.length + ") = " + f(pw(w, 0), 4) + "</td></tr>"; });
+    h += "<tr><td><b>punteggio = prodotto</b></td><td><b>" + fs(c.sc[1]) + "</b></td><td><b>" + fs(c.sc[0]) + "</b></td></tr>";
+    h += "<tr><td>in logaritmi (ln): somma</td><td>" + (c.ninf[1] ? "−∞" : f(c.lg[1], 4)) + "</td><td>" + (c.ninf[0] ? "−∞" : f(c.lg[0], 4)) + "</td></tr></tbody>";
+    $("sCalcT").innerHTML = h;
+    var pl = ws.length ? "Parole presenti: <b>" + ws.join(", ") + "</b>. " : "Nessuna parola scelta: restano solo le probabilità a priori. ", t = pl;
+    if (c.p === null) t += "Entrambi i punteggi valgono 0: <b>P(spam) = 0/0, non definita</b>. Il filtro non può decidere (una parola mai vista in una classe ha azzerato tutto).";
+    else {
+      var d = c.p >= SS.thr;
+      t += "P(spam) = " + fs(c.sc[1]) + " / (" + fs(c.sc[1]) + " + " + fs(c.sc[0]) + ") = <b class='bz-big'>" + pct(c.p) + "</b>. Con soglia " + f(SS.thr, 2) + ": <b class='bz-big " + (d ? "bz-bad" : "bz-ok") + "'>" + (d ? "SPAM" : "NON SPAM") + "</b>.";
+      if (c.sc[0] === 0 || c.sc[1] === 0) t += " <span class='hint'>Attenzione: un punteggio è esattamente 0, quindi la certezza è assoluta (" + pct(c.p, 0) + ") per una sola parola!</span>";
+    }
+    $("sRes").innerHTML = t; $("sThrV").textContent = f(SS.thr, 2); $("sThr2V").textContent = f(SS.thr, 2);
+  }
+  function metrics(thr) {
+    var TP = 0, FP = 0, FN = 0, TN = 0, rows = [];
+    TE.forEach(function (e) { var c = classify(e[0].split(" ")), pred = c.p !== null && c.p >= thr ? 1 : 0, y = e[1]; if (pred && y) TP++; else if (pred && !y) FP++; else if (!pred && y) FN++; else TN++; rows.push({ c: c, pred: pred, y: y }); });
+    var n = TE.length, acc = (TP + TN) / n, pr = TP + FP ? TP / (TP + FP) : null, re = TP + FN ? TP / (TP + FN) : null, f1 = pr !== null && re !== null && pr + re > 0 ? 2 * pr * re / (pr + re) : null;
+    return { TP: TP, FP: FP, FN: FN, TN: TN, acc: acc, pr: pr, re: re, f1: f1, rows: rows, fpr: FP + TN ? FP / (FP + TN) : 0 };
+  }
+  var CT = setupCanvas($("cvT"));
+  function renderTest() {
+    var m = metrics(SS.thr), h = "";
+    m.rows.forEach(function (r, i) {
+      var ok = r.pred === r.y, lab = r.pred && r.y ? "VP" : r.pred ? "FP" : r.y ? "FN" : "VN";
+      h += "<tr><td>" + (i + 1) + "</td><td style='white-space:normal'>" + TE[i][0] + "</td><td><span class='bz-tag " + (r.y ? "sp" : "ham") + "'>" + (r.y ? "spam" : "non spam") + "</span></td><td>" + (r.c.p === null ? "—" : pct(r.c.p, 1)) + "</td><td class='" + (ok ? "bz-ok" : "bz-bad") + "'><b>" + lab + "</b>" + (r.pred ? " (segnalata)" : "") + "</td></tr>";
+    }); document.querySelector("#sTest tbody").innerHTML = h;
+    $("sCM").innerHTML = "<tr><th></th><th>segnalata spam</th><th>non segnalata</th></tr><tr><th>è spam</th><td><b>" + m.TP + "</b><br><small>vero positivo</small></td><td><b>" + m.FN + "</b><br><small>falso negativo</small></td></tr><tr><th>non è spam</th><td><b>" + m.FP + "</b><br><small>falso positivo</small></td><td><b>" + m.TN + "</b><br><small>vero negativo</small></td></tr>";
+    var t = function (l, v) { return "<div class='bz-tile'><small>" + l + "</small><b>" + (v === null ? "—" : pct(v, 1)) + "</b></div>"; };
+    $("sTiles").innerHTML = t("accuratezza", m.acc) + t("precisione", m.pr) + t("richiamo", m.re) + t("F1", m.f1);
+    // grafico
+    fit(CT, true); var c = CT.ctx, w = cvT_W(), hh = CT.cv._H, L = 38, Bt = 24, T = 8, Rr = 10, xs = [], ser = [[], [], []];
+    for (var th = 1; th <= 19; th++) { var mm = metrics(th / 20); xs.push(th / 20); ser[0].push(mm.pr); ser[1].push(mm.re); ser[2].push(mm.f1); }
+    c.fillStyle = "#fff"; c.fillRect(0, 0, w, hh);
+    var px = function (x) { return L + (w - L - Rr) * (x - 0.05) / 0.9; }, py = function (v) { return T + (hh - T - Bt) * (1 - v); };
+    c.strokeStyle = "#e3e9e9"; c.fillStyle = "#566074"; c.font = "12px system-ui"; c.textAlign = "right";
+    for (var g = 0; g <= 4; g++) { c.beginPath(); c.moveTo(L, py(g / 4)); c.lineTo(w - Rr, py(g / 4)); c.stroke(); c.fillText(g * 25 + "%", L - 4, py(g / 4) + 4); }
+    c.textAlign = "center"; [0.1, 0.3, 0.5, 0.7, 0.9].forEach(function (x) { c.fillText(f(x, 1), px(x), hh - 8); });
+    [["#1F3864", ser[0]], ["#C0611B", ser[1]], ["#2E7D32", ser[2]]].forEach(function (s) { c.strokeStyle = s[0]; c.lineWidth = 2.2; var pen = false; c.beginPath(); s[1].forEach(function (v, i) { if (v === null) { pen = false; return; } if (pen) c.lineTo(px(xs[i]), py(v)); else c.moveTo(px(xs[i]), py(v)); pen = true; }); c.stroke(); });
+    c.strokeStyle = "#1d2433"; c.lineWidth = 1.5; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(px(SS.thr), T); c.lineTo(px(SS.thr), hh - Bt); c.stroke(); c.setLineDash([]);
+    renderImb(m);
+  }
+  function cvT_W() { return CT.cv._W; }
+  function renderImb(m) {
+    var q = SS.q / 100, n = 10000, re = m.re === null ? 0 : m.re, fpr = m.fpr, S = n * q, Hm = n - S, TP = S * re, FN = S - TP, FP = Hm * fpr, TN = Hm - FP;
+    var acc = (TP + TN) / n, pr = TP + FP > 0 ? TP / (TP + FP) : null, rf = function (x) { return Math.round(x); }, never = Hm / n;
+    $("sQV").textContent = SS.q + "%";
+    $("sImbT").innerHTML = "<table class='bz-cm'><tr><th></th><th>segnalata</th><th>non segnalata</th></tr><tr><th>spam (" + rf(S) + ")</th><td><b>" + rf(TP) + "</b></td><td><b>" + rf(FN) + "</b></td></tr><tr><th>non spam (" + rf(Hm) + ")</th><td><b>" + rf(FP) + "</b></td><td><b>" + rf(TN) + "</b></td></tr></table>";
+    $("sImbR").innerHTML = "<div class='bz-tiles'><div class='bz-tile'><small>accuratezza del filtro</small><b>" + pct(acc, 1) + "</b></div><div class='bz-tile'><small>precisione</small><b>" + (pr === null ? "—" : pct(pr, 1)) + "</b></div></div><p style='margin-top:8px'>Un filtro <b>inutile</b> che dice sempre «non spam» ha accuratezza <b>" + pct(never, 1) + "</b> e richiamo 0%. Con classi sbilanciate l’accuratezza non basta: contano precisione e richiamo.</p>";
+  }
+  function renderS() { renderCounts(); renderCalc(); renderTest(); }
+  $("sWords").addEventListener("change", function (e) { var t = e.target; if (!t.dataset.w) return; SS.words[t.dataset.w] = t.checked; syncText(); renderCalc(); });
+  function syncChecks() { Array.prototype.forEach.call($("sWords").querySelectorAll("input"), function (i) { i.checked = !!SS.words[i.dataset.w]; }); }
+  function syncText() { $("sText").value = present().join(" "); $("sUnk").textContent = ""; }
+  $("sText").addEventListener("input", function () {
+    var toks = $("sText").value.toLowerCase().split(/[^a-zàèéìòù]+/).filter(Boolean), unk = []; SS.words = {};
+    toks.forEach(function (w) { if (V.indexOf(w) >= 0) SS.words[w] = true; else if (unk.indexOf(w) < 0) unk.push(w); });
+    syncChecks(); $("sUnk").textContent = unk.length ? "Parole fuori vocabolario (ignorate): " + unk.join(", ") + "." : ""; renderCalc();
+  });
+  $("sAlpha").addEventListener("input", function () { SS.alpha = +$("sAlpha").value; renderS(); });
+  function setThr(v) { SS.thr = +v; $("sThr").value = v; $("sThr2").value = v; renderCalc(); renderTest(); }
+  $("sThr").addEventListener("input", function () { setThr($("sThr").value); });
+  $("sThr2").addEventListener("input", function () { setThr($("sThr2").value); });
+  $("sQ").addEventListener("input", function () { SS.q = +$("sQ").value; renderTest(); });
+
+  /* =============================== tab =============================== */
+  function tab(w) { var b = w === "b"; $("pB").hidden = !b; $("pS").hidden = b; $("tbB").classList.toggle("on", b); $("tbS").classList.toggle("on", !b); if (b) renderB(); else renderS(); }
+  $("tbB").onclick = function () { tab("b"); }; $("tbS").onclick = function () { tab("s"); };
+  window.addEventListener("resize", function () { if (!$("pB").hidden) drawG(); else renderTest(); });
+
+  /* =============================== esperienze =============================== */
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function bInit(o) { o = o || {}; tab("b"); setv("bPrev", o.prev === undefined ? 1 : o.prev); setv("bSens", o.sens || 90); setv("bSpec", o.spec || 90); $("bHi").checked = !!o.hi; B.hi = !!o.hi; setv("bGuess", 90); renderB(); }
+  function sInit(o) { o = o || {}; tab("s"); SS.words = {}; (o.words || []).forEach(function (w) { SS.words[w] = true; }); syncChecks(); syncText(); setv("sAlpha", o.alpha === undefined ? 1 : o.alpha); setv("sQ", o.q || 1); setThr(o.thr || 0.5); }
+  function setWords(ws) { SS.words = {}; ws.forEach(function (w) { SS.words[w] = true; }); syncChecks(); syncText(); renderCalc(); }
+  var EXPS = [
+    { id: "b1", title: "Test positivo non significa malato", time: "7 min", desc: "Con una malattia rara, anche un buon test sbaglia molto più spesso di quanto sembri.", steps: [
+      { t: "Mille persone", x: "Ogni <b>quadratino</b> è una persona su 1000. Un test medico viene fatto a tutte. La domanda: se il test di una persona è <b>positivo</b>, quanto è probabile che sia davvero malata?", el: "#cvG", apply: function () { bInit({ prev: 1, sens: 90, spec: 90 }); } },
+      { t: "Pochi malati", x: "La <b>prevalenza</b> è l’1%: su 1000 persone <b>10</b> sono malate (i quadratini arancioni), 990 sono sane. La malattia è rara.", el: "#bPrevRow" },
+      { t: "Il test trova i malati", x: "La <b>sensibilità</b> è il 90%: il test dà positivo a 9 malati su 10. Quindi <b>9 veri positivi</b> (arancione scuro) e <b>1 falso negativo</b> (arancione chiaro).", el: ["#bSensRow", "#bLeg"] },
+      { t: "Ma sbaglia anche sui sani", x: "La <b>specificità</b> è il 90%: il test lascia in pace 9 sani su 10, ma sbaglia sul restante 10%. Il 10% di 990 sani sono <b>99 falsi positivi</b> (quadratini blu).", el: ["#bSpecRow", "#bLeg"] },
+      { t: "Chi è positivo?", x: "Metti in evidenza i positivi: sono <b>108</b> persone, 9 malate e 99 sane. Se sei positivo, la probabilità di essere malato è <b>9 su 108 = 8,3%</b>, non il 90%!", el: ["#bOut", "#cvG"], btn: "Evidenzia i positivi", apply: function () { $("bHi").checked = true; B.hi = true; renderB(); } },
+      { t: "Il teorema di Bayes", x: "È lo stesso calcolo con le probabilità: P(+) = 0,90·0,01 + 0,10·0,99 = 0,1080, e P(M|+) = 0,90·0,01 / 0,1080 = <b>0,0833</b>. Il numeratore conta i malati positivi, il denominatore tutti i positivi.", el: "#bFP" },
+      { t: "L’intuizione inganna", x: "Molti rispondono «circa 90%», cioè la sensibilità. Il risultato vero è <b>8,3%</b>: il confronto mostra la distanza. Il gruppo dei sani è così grande che anche il 10% di errori produce molti più falsi positivi dei veri positivi.", el: "#bIntu" },
+      { t: "Più malati, più fiducia", x: "Porta la prevalenza al <b>20%</b>: ora i malati sono 200, i veri positivi 180 e i falsi positivi 80. Un positivo è davvero malato con probabilità 180/260 = <b>69,2%</b>. La stessa prova vale di più se la malattia è meno rara.", el: ["#bPrevRow", "#bOut"], btn: "Prevalenza 20%", apply: function () { setv("bPrev", 20); } },
+      { t: "Un test più specifico", x: "Torna alla prevalenza 1% e porta la specificità al <b>99%</b>: i falsi positivi scendono a circa 10 e un positivo è malato con probabilità <b>47,6%</b>. Per malattie rare conta soprattutto la specificità.", el: ["#bSpecRow", "#bOut"], btn: "Prevalenza 1%, specificità 99%", apply: function () { setv("bPrev", 1); setv("bSpec", 99); } }
+    ] },
+    { id: "b2", title: "Aggiornare con una parola", time: "6 min", desc: "Priori e verosimiglianze: come le parole fanno salire o scendere la probabilità di spam.", steps: [
+      { t: "Prima di leggere l’email", x: "Tra le 12 email di addestramento, <b>5</b> sono spam e 7 no. Senza leggere nulla, la probabilità <b>a priori</b> di spam è 5/12 = <b>0,4167</b>.", el: "#sPriors", apply: function () { sInit({ alpha: 1 }); } },
+      { t: "Quante volte compare ogni parola", x: "La tabella conta le parole in ciascuna classe. «gratis» compare <b>4 volte</b> nelle email spam e <b>mai</b> nelle altre; «riunione» fa l’opposto. Le probabilità condizionate P(parola | classe) nascono da questi conteggi.", el: "#sTab" },
+      { t: "Una parola: «gratis»", x: "Spunta <b>gratis</b>. P(gratis | spam) = (4+1)/(15+8) = 0,2174, P(gratis | non spam) = (0+1)/(19+8) = 0,0370. Moltiplicati per i priori: punteggi 0,0906 contro 0,0216.", el: "#sWords", btn: "Spunta «gratis»", apply: function () { setWords(["gratis"]); } },
+      { t: "La probabilità si aggiorna", x: "P(spam) = 0,0906 / (0,0906 + 0,0216) = <b>80,7%</b>. La parola ha fatto salire la probabilità da 41,7% a 80,7%: è l’aggiornamento di Bayes.", el: "#sRes" },
+      { t: "Una prova contraria", x: "Aggiungi <b>riunione</b>, tipica delle email normali. I punteggi diventano quasi uguali (0,00394 contro 0,00400) e P(spam) scende a <b>49,6%</b>: le due prove si bilanciano.", el: ["#sWords", "#sCalc"], btn: "Aggiungi «riunione»", apply: function () { setWords(["gratis", "riunione"]); } },
+      { t: "Un’altra parola normale", x: "Aggiungi anche <b>grazie</b>: P(spam) scende a <b>18,8%</b>. «Naive» (ingenuo) vuol dire che le parole si trattano come indipendenti: basta moltiplicare i fattori.", el: ["#sWords", "#sRes"], btn: "Aggiungi «grazie»", apply: function () { setWords(["gratis", "riunione", "grazie"]); } },
+      { t: "Meglio usare i logaritmi", x: "Moltiplicare tanti numeri piccoli dà numeri minuscoli (qui 0,000171 e 0,000741). Con i <b>logaritmi</b> i prodotti diventano somme: −8,6725 contro −7,2076. Confronto identico, ma senza rischi di numeri troppo piccoli per il computer.", el: "#sCalcT" }
+    ] },
+    { id: "b3", title: "Lo smoothing di Laplace e la parola mai vista", time: "6 min", desc: "Che cosa succede se una parola non è mai comparsa in una classe, e perché si aggiunge α.", steps: [
+      { t: "Senza smoothing", x: "Poniamo α = <b>0</b>: le probabilità sono solo frequenze osservate. Spunta <b>gratis</b>: nelle email non spam non è mai comparsa, quindi P(gratis | non spam) = 0.", el: ["#sAlphaRow", "#sCounts"], apply: function () { sInit({ alpha: 0, words: ["gratis"] }); } },
+      { t: "Uno zero cancella tutto", x: "Il punteggio «non spam» è un prodotto e contiene uno 0: vale <b>0</b>. Risultato: P(spam) = <b>100%</b> per una sola parola, certezza assurda dopo aver visto soltanto 12 email.", el: "#sCalc" },
+      { t: "Due zeri in conflitto", x: "Aggiungi <b>riunione</b>, mai vista negli spam. Ora entrambi i punteggi valgono 0 e il calcolo diventa 0/0: il filtro <b>non può decidere</b>.", el: ["#sWords", "#sRes"], btn: "Aggiungi «riunione»", apply: function () { setWords(["gratis", "riunione"]); } },
+      { t: "Lo smoothing con α = 1", x: "Porta α a <b>1</b>: si aggiunge 1 a ogni conteggio (come se ogni parola fosse stata vista una volta in più in ogni classe). Nessuna probabilità è più 0: P(spam) = <b>49,6%</b>.", el: ["#sAlphaRow", "#sRes"], btn: "α = 1", apply: function () { setv("sAlpha", 1); } },
+      { t: "Perché si somma α·V", x: "Aggiungendo α a ciascuna delle V = 8 parole, il denominatore diventa N + α·V (per gli spam 15 + 8 = 23): così le probabilità della classe sommano ancora a 1.", el: "#sFormula" },
+      { t: "Più smoothing, meno certezze", x: "Porta α a <b>2</b>: P(spam) = <b>47,7%</b>. Con α grande le parole contano sempre meno e si torna ai soli priori. α è un compromesso fra fidarsi dei dati e restare prudenti.", el: ["#sAlphaRow", "#sRes"], btn: "α = 2", apply: function () { setv("sAlpha", 2); } }
+    ] },
+    { id: "b4", title: "Soglia, precisione e richiamo", time: "7 min", desc: "Spostare la soglia cambia gli errori che si fanno. E con poco spam l’accuratezza inganna.", steps: [
+      { t: "Un insieme di test", x: "Ecco 24 email nuove, 12 spam e 12 no, con la classe vera. Il filtro calcola P(spam) e con la soglia 0,50 le segnala quando P ≥ 0,50. L’esito è VP, FP, FN o VN.", el: "#sTestP", apply: function () { sInit({ alpha: 1, thr: 0.5 }); } },
+      { t: "La matrice di confusione", x: "Con soglia 0,50: <b>10 spam trovati</b> (VP), <b>2 spam persi</b> (FN), <b>2 email normali segnalate per errore</b> (FP) e 10 corrette (VN). Accuratezza 83,3%.", el: "#sCM" },
+      { t: "Precisione e richiamo", x: "<b>Precisione</b> = VP/(VP+FP) = 10/12 = 83,3%: delle email segnalate, quante sono davvero spam. <b>Richiamo</b> = VP/(VP+FN) = 10/12 = 83,3%: degli spam, quanti ne troviamo. F1 è la loro media armonica.", el: "#sTiles" },
+      { t: "Soglia alta: pochi falsi allarmi", x: "Porta la soglia a <b>0,90</b>: si segnalano solo le email quasi certamente spam. La precisione sale a <b>100%</b> ma il richiamo crolla al <b>25,0%</b> (solo 3 spam su 12 trovati): molti spam passano.", el: ["#sThr2", "#sTiles"], btn: "Soglia 0,90", apply: function () { setThr(0.9); } },
+      { t: "Soglia bassa: pochi spam persi", x: "Porta la soglia a <b>0,30</b>: il richiamo sale a <b>100%</b> ma la precisione scende al <b>70,6%</b> perché ora anche email normali vengono segnalate (5 falsi positivi).", el: ["#sThr2", "#sTiles"], btn: "Soglia 0,30", apply: function () { setThr(0.3); } },
+      { t: "Il grafico", x: "Il grafico mostra precisione, richiamo e F1 per ogni soglia: la precisione sale e il richiamo scende. Quale soglia scegliere dipende da quale errore costa di più: perdere una mail importante o ricevere uno spam?", el: "#cvT" },
+      { t: "Quando lo spam è raro", x: "Rimetti la soglia a 0,50. Se solo l’<b>1%</b> delle email è spam, su 10 000 email questo filtro ha accuratezza <b>83,3%</b>, ma la precisione è appena <b>4,8%</b>: quasi tutte le segnalate sono normali.", el: "#sImb", btn: "Soglia 0,50, spam all’1%", apply: function () { setThr(0.5); setv("sQ", 1); } },
+      { t: "L’accuratezza inganna", x: "Un filtro che non fa niente e dice sempre «non spam» ha accuratezza <b>99,0%</b>, più alta del nostro filtro, con richiamo 0%. Per classi sbilanciate si guardano precisione e richiamo.", el: "#sImbR" }
+    ] }
+  ];
+  window.__bz = { B: B, SS: SS, tab: tab, calcB: calcB, metrics: metrics, classify: classify };
+  Tour.init(EXPS);
+  renderTrain(); renderB();
+  window.addEventListener("load", function () { if (!$("pB").hidden) drawG(); });
+})();
+</script>
+</body>
+</html>

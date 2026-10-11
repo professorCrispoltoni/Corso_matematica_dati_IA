@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trasformazioni con matrici 2×2</title>
+<style>
+  :root {
+    --navy: #1F3864; --teal: #0F6E6E; --orange: #C0611B; --grey: #888888;
+    --bg: #ffffff; --panel: #F4F7F7; --ink: #1d2433; --line: #cfd8d8;
+    --i-col: #B3261E; --j-col: #2E7D32;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  header { background: var(--navy); color: #fff; padding: 10px 16px; }
+  header h1 { margin: 0; font-size: 1.2rem; font-weight: 600; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .85; }
+  main { display: grid; grid-template-columns: minmax(300px, 640px) minmax(300px, 1fr); gap: 16px; padding: 14px 16px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+  .stage { position: relative; }
+  canvas { width: 100%; aspect-ratio: 1 / 1; display: block; border: 1px solid var(--line); border-radius: 8px; background: #fff; touch-action: none; cursor: default; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: .95rem; color: var(--teal); text-transform: uppercase; letter-spacing: .04em; }
+  .matrix { display: flex; align-items: center; gap: 8px; }
+  .brackets { display: grid; grid-template-columns: repeat(2, 78px); gap: 6px; padding: 6px 10px; border-left: 3px solid var(--navy); border-right: 3px solid var(--navy); border-radius: 6px; }
+  .brackets input { width: 100%; font-size: 1.15rem; padding: 6px 4px; text-align: center; border: 1px solid var(--line); border-radius: 4px; font-variant-numeric: tabular-nums; }
+  .brackets input.bad { border-color: #B3261E; background: #fdecea; }
+  .col-i { color: var(--i-col); font-weight: 600; } .col-j { color: var(--j-col); font-weight: 600; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; font-size: .88rem; padding: 6px 10px; border: 1px solid var(--navy); background: #fff; color: var(--navy); border-radius: 6px; cursor: pointer; }
+  button:hover { background: #e8eef8; } button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #f2b266; outline-offset: 1px; }
+  button.primary { background: var(--navy); color: #fff; }
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px; font-size: .9rem; }
+  .row input[type=range] { flex: 1 1 140px; min-width: 120px; }
+  select { font: inherit; padding: 4px 6px; }
+  .out { font-size: .95rem; line-height: 1.5; }
+  .out .det { font-size: 1.25rem; font-weight: 700; color: var(--navy); }
+  .out .warn { color: #B3261E; font-weight: 600; }
+  .legend { font-size: .82rem; color: #444; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+  .sw { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 4px; }
+  .hint { font-size: .82rem; color: #555; margin: 6px 0 0; }
+  label { cursor: pointer; }
+
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;justify-content:space-between}
+  header .hb{display:flex;gap:8px;flex-wrap:wrap}
+  header .hb button{background:#fff;color:var(--navy);border-color:#fff;font-weight:600}
+  header .hb button.guide{background:var(--orange);border-color:var(--orange);color:#fff}
+  details#intro{max-width:1200px;margin:12px auto 0;padding:0 16px}
+  details#intro>summary{cursor:pointer;font-weight:700;color:var(--navy);font-size:1.02rem;padding:8px 12px;background:#E8EEF8;border:1px solid var(--line);border-radius:8px;list-style:none}
+  details#intro>summary::before{content:"▸ ";color:var(--teal)} details#intro[open]>summary::before{content:"▾ "}
+  .igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
+  .icard{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--teal);border-radius:8px;padding:10px 14px;font-size:.92rem;line-height:1.5}
+  .icard h3{margin:0 0 6px;font-size:1rem;color:var(--navy)}
+  .icard p{margin:5px 0}
+  .icard.wide{grid-column:1/-1}
+  .ex1{background:#fff;border:1px dashed var(--line);border-radius:6px;padding:6px 10px;margin:6px 0;overflow-x:auto}
+  .mx{display:inline-grid;grid-template-columns:auto auto;gap:2px 12px;padding:2px 8px;border-left:2px solid #333;border-right:2px solid #333;border-radius:5px;vertical-align:middle;text-align:center;font-variant-numeric:tabular-nums;margin:0 3px}
+  .vx{display:inline-grid;grid-template-columns:auto;gap:2px 0;padding:2px 8px;border-left:2px solid #333;border-right:2px solid #333;border-radius:5px;vertical-align:middle;text-align:center;font-variant-numeric:tabular-nums;margin:0 3px}
+  .ci{color:var(--i-col);font-weight:700}.cj{color:var(--j-col);font-weight:700}
+  .calc{font-size:.95rem;line-height:1.9}
+  .calc .eqrow{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px}
+  .pin{width:70px;font-size:1rem;padding:4px;text-align:center;border:1px solid var(--line);border-radius:4px}
+  .pin.bad{border-color:#B3261E;background:#fdecea}
+  .legend .pp{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin-right:4px}
+  /* tour */
+  button.ex{display:block;text-align:left;font:inherit;background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:8px;padding:8px 10px;cursor:pointer;color:var(--ink);width:100%;margin-bottom:6px}
+  button.ex:hover{background:#eef6f6;border-color:var(--teal)}
+  button.ex b{display:block;color:var(--navy);font-size:.92rem}
+  button.ex span{display:block;font-size:.8rem;color:#4a5568;margin:2px 0}
+  button.ex em{font-size:.72rem;color:var(--teal);font-style:normal;font-weight:600}
+  #tourOver{display:none;position:fixed;inset:0;z-index:50;pointer-events:none}
+  #tourHole{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(15,30,60,.58);outline:3px solid #f2b266;transition:left .25s,top .25s,width .25s,height .25s;animation:tpulse 1.6s infinite}
+  @keyframes tpulse{50%{outline-color:#fff}}
+  #tourCard{position:fixed;z-index:60;width:min(400px,calc(100vw - 24px));background:#fff;border:1px solid var(--line);border-top:5px solid var(--teal);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:10px 14px 12px;pointer-events:auto}
+  #tourKick{font-size:.72rem;color:var(--teal);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+  #tourTitle{margin:3px 0 4px;font-size:1.02rem;color:var(--navy)}
+  #tourText{font-size:.9rem;line-height:1.4}
+  #tourDots{display:flex;gap:4px;margin:8px 0}
+  #tourDots i{flex:1;height:4px;border-radius:2px;background:#d6dede}#tourDots i.ok{background:var(--teal)}#tourDots i.on{background:var(--orange)}
+  .tbtn{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .tbtn button:disabled{opacity:.4;cursor:default}
+  .tbtn #tourNext{background:var(--navy);color:#fff;margin-left:auto}
+  .tbtn #tourDo{background:var(--orange);border-color:var(--orange);color:#fff}
+  .tbtn #tourExit{border-color:#aaa;color:#555}
+  #tourMenu{display:none;position:fixed;inset:0;z-index:70;background:rgba(15,30,60,.55);align-items:center;justify-content:center;padding:12px}
+  #tourMenu .tm{background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:14px 18px}
+  #tourMenu h3{margin:0 0 4px;color:var(--navy)}
+  #tourMenu .tmh{display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<header>
+  <div>
+    <h1>Trasformazioni con matrici 2×2</h1>
+    <p>Matematica, Dati e Intelligenza Artificiale · una matrice è una trasformazione del piano</p>
+  </div>
+  <div class="hb">
+    <button id="introBtn" title="Mostra o nascondi l’introduzione">📖 Introduzione</button>
+    <button id="tourMenuBtn" class="guide">🎓 Esperienze guidate</button>
+  </div>
+</header>
+
+<details id="intro" open>
+<summary>Prima di cominciare: vettori, matrici e che cosa vuol dire “trasformare il piano” (clicca per aprire/chiudere)</summary>
+<div class="igrid">
+
+  <div class="icard">
+    <h3>1 · Un vettore è un punto (o una freccia)</h3>
+    <p>La coppia <b>(x ; y)</b> = (3 ; 2) indica un punto del piano: 3 verso destra, 2 verso l’alto. Lo si può disegnare come punto oppure come <b>freccia</b> che parte dall’origine. In colonna si scrive
+      <span class="vx"><span>3</span><span>2</span></span></p>
+    <svg viewBox="0 0 200 150" width="200" height="150" role="img" aria-label="Il vettore (3,2) come freccia dall’origine" style="display:block;margin:4px auto">
+      <g stroke="#e3e9e9" stroke-width="1"><path d="M20 20V130M50 20V130M80 20V130M110 20V130M140 20V130M170 20V130M20 130H180M20 100H180M20 70H180M20 40H180"/></g>
+      <g stroke="#555" stroke-width="1.5"><path d="M20 130H185M20 130V15"/></g>
+      <path d="M110 130V70M20 70H110" stroke="#888" stroke-dasharray="4 3" fill="none"/>
+      <path d="M20 130L106 74" stroke="#1F3864" stroke-width="3"/><path d="M110 70L98 70L104 80Z" fill="#1F3864" transform="rotate(0)"/>
+      <circle cx="110" cy="70" r="5" fill="#1F3864"/>
+      <text x="116" y="64" font-size="12" fill="#1F3864">(3 ; 2)</text>
+      <text x="106" y="144" font-size="11" fill="#555">3</text><text x="6" y="74" font-size="11" fill="#555">2</text>
+    </svg>
+    <p><b>Somma</b> (componente per componente): (3 ; 2) + (1 ; −1) = (4 ; 1).<br>
+       <b>Per un numero</b>: 2·(3 ; 2) = (6 ; 4) — la freccia si allunga.</p>
+  </div>
+
+  <div class="icard">
+    <h3>2 · Una matrice 2×2 è una tabella di 4 numeri</h3>
+    <p>
+      <span class="mx"><span class="ci">a</span><span class="cj">b</span><span class="ci">c</span><span class="cj">d</span></span>
+      ha due <b>righe</b> (a b) e (c d) e due <b>colonne</b>: la <span class="ci">1ª colonna (a ; c)</span> e la <span class="cj">2ª colonna (b ; d)</span>.</p>
+    <p>Esempio:
+      <span class="mx"><span class="ci">2</span><span class="cj">0</span><span class="ci">1</span><span class="cj">1</span></span>
+      ha 1ª colonna (2 ; 1) e 2ª colonna (0 ; 1).</p>
+    <p>I colori rosso e verde ti accompagneranno in tutta la pagina: <b>rosso = 1ª colonna</b>, <b>verde = 2ª colonna</b>.</p>
+  </div>
+
+  <div class="icard">
+    <h3>3 · Matrice × vettore: “riga per colonna”</h3>
+    <p>Per applicare la matrice A a un punto P = (x ; y) si moltiplicano gli elementi di <b>ciascuna riga</b> per le coordinate di P e si <b>sommano</b>:</p>
+    <div class="ex1">
+      <span class="mx"><span class="ci">a</span><span class="cj">b</span><span class="ci">c</span><span class="cj">d</span></span>·<span class="vx"><span>x</span><span>y</span></span>
+      = <span class="vx"><span><span class="ci">a</span>·x + <span class="cj">b</span>·y</span><span><span class="ci">c</span>·x + <span class="cj">d</span>·y</span></span>
+    </div>
+    <p>Esempio con P = (2 ; 1):</p>
+    <div class="ex1">
+      <span class="mx"><span class="ci">2</span><span class="cj">0</span><span class="ci">1</span><span class="cj">1</span></span>·<span class="vx"><span>2</span><span>1</span></span>
+      = <span class="vx"><span>2·2 + 0·1</span><span>1·2 + 1·1</span></span>
+      = <span class="vx"><span><b>4</b></span><span><b>3</b></span></span>
+    </div>
+    <p>Il punto P = (2 ; 1) viene portato in P′ = (4 ; 3).</p>
+  </div>
+
+  <div class="icard">
+    <h3>4 · Perché è una “trasformazione” del piano</h3>
+    <p>Fai lo stesso calcolo per <b>tutti</b> i punti: ogni punto P va in un nuovo punto P′ = A·P, e quindi tutto il piano (griglia, figure) viene spostato, ruotato, allungato o schiacciato.</p>
+    <p><b>Il trucco per capire la matrice.</b> Il punto (1 ; 0) va nella <span class="ci">1ª colonna</span>, il punto (0 ; 1) va nella <span class="cj">2ª colonna</span>. Poiché (x ; y) = x·(1 ; 0) + y·(0 ; 1), si ha
+      <b>A·(x ; y) = x·<span class="ci">(1ª colonna)</span> + y·<span class="cj">(2ª colonna)</span></b>.</p>
+    <p>Quindi: <b>basta sapere dove finiscono i due vettori di base e si sa dove va tutto il piano</b>. Per questo, nella figura, i due pallini rosso e verde sono le colonne: trascinandoli cambi la matrice.</p>
+  </div>
+
+  <div class="icard">
+    <h3>5 · Come si usa questa pagina</h3>
+    <p>• <b>Cambia i quattro numeri</b> della matrice, oppure <b>trascina i pallini</b> rosso e verde, oppure usa le <b>trasformazioni pronte</b>.<br>
+       • Il <b>punto di prova P</b> (blu) e la sua immagine P′ (arancione): puoi trascinarlo o scriverne le coordinate. Il riquadro <b>“Il calcolo”</b> mostra riga per colonna come si ottiene P′.<br>
+       • <b>Componi</b> applica una nuova trasformazione <i>dopo</i> quella attuale: è il <b>prodotto di matrici</b> (conta l’ordine!).<br>
+       • Il <b>determinante</b> dice di quanto cambiano le aree; se vale 0 la figura viene schiacciata e l’<b>inversa</b> non esiste.<br>
+       • Se è la prima volta, premi <b>🎓 Esperienze guidate</b>: ti accompagna passo per passo.</p>
+  </div>
+
+  <div class="icard">
+    <h3>6 · Perché serve all’intelligenza artificiale</h3>
+    <p>Un dato con <i>n</i> misure (un’immagine, una casa, un paziente) è un <b>vettore</b>. Uno strato di una rete neurale calcola <b>W·x + b</b>: una <b>matrice per un vettore</b>, più un vettore di “bias”. Qui vedi in 2 dimensioni ciò che nella rete avviene in centinaia di dimensioni: la matrice <b>deforma lo spazio dei dati</b>, e l’addestramento sceglie la deformazione utile.</p>
+  </div>
+
+</div>
+</details>
+<main>
+  <section class="stage">
+    <canvas id="cv" width="640" height="640" aria-label="Piano cartesiano con la griglia e la figura trasformate dalla matrice"></canvas>
+    <div class="legend">
+      <span><span class="sw" style="border-color:#c9d3d3"></span>griglia e figura originali</span>
+      <span><span class="sw" style="border-color:var(--teal)"></span>griglia trasformata</span>
+      <span><span class="sw" style="border-color:var(--orange)"></span>figura trasformata</span>
+      <span><span class="sw" style="border-color:var(--i-col)"></span>(1, 0) → 1ª colonna</span>
+      <span><span class="sw" style="border-color:var(--j-col)"></span>(0, 1) → 2ª colonna</span>
+      <span><span class="pp" style="background:var(--navy)"></span>punto P</span>
+      <span><span class="pp" style="background:var(--orange)"></span>immagine P′ = A·P</span>
+    </div>
+    <p class="hint">Trascina i pallini rosso e verde (le colonne della matrice) oppure il punto blu P.</p>
+  </section>
+
+  <section>
+    <div class="panel" id="matPanel">
+      <h2>La matrice A</h2>
+      <div class="matrix">
+        <div class="brackets" id="mat">
+          <input id="a" aria-label="elemento a, riga 1 colonna 1" value="1" inputmode="decimal" class="col-i">
+          <input id="b" aria-label="elemento b, riga 1 colonna 2" value="0" inputmode="decimal" class="col-j">
+          <input id="c" aria-label="elemento c, riga 2 colonna 1" value="0" inputmode="decimal" class="col-i">
+          <input id="d" aria-label="elemento d, riga 2 colonna 2" value="1" inputmode="decimal" class="col-j">
+        </div>
+        <div class="hint" style="margin:0">(x, y) → (a·x + b·y , c·x + d·y)<br>Si può scrivere anche con la virgola.</div>
+      </div>
+    </div>
+
+    <div class="panel" id="ptPanel">
+      <h2>Un punto alla volta: il calcolo</h2>
+      <div class="row" style="margin-top:0">
+        <span>Punto di prova <b style="color:var(--navy)">P</b> = (</span>
+        <input class="pin" id="px" value="2" inputmode="decimal" aria-label="coordinata x del punto P">
+        <span>;</span>
+        <input class="pin" id="py" value="1" inputmode="decimal" aria-label="coordinata y del punto P">
+        <span>)</span>
+        <label id="consRow"><input type="checkbox" id="cons"> Mostra la costruzione</label>
+      </div>
+      <div class="calc" id="calc" aria-live="polite"></div>
+    </div>
+
+    <div class="panel" id="presetPanel">
+      <h2>Trasformazioni pronte</h2>
+      <div class="buttons" id="presets">
+        <button data-p="id">Identità</button>
+        <button data-p="rot">Rotazione</button>
+        <button data-p="scal">Scalatura (2 ; 1,5)</button>
+        <button data-p="shear">Taglio</button>
+        <button data-p="rx">Riflessione asse x</button>
+        <button data-p="ry">Riflessione asse y</button>
+        <button data-p="proj">Proiezione su x</button>
+      </div>
+      <div class="row">
+        <label for="ang">Angolo della rotazione</label>
+        <input type="range" id="ang" min="-180" max="180" step="5" value="30">
+        <output id="angv" style="min-width:3.2em">30°</output>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="comp"> Componi: la nuova trasformazione si applica <em>dopo</em> quella attuale (A ← P·A)</label>
+      </div>
+    </div>
+
+    <div class="panel" id="figPanel">
+      <h2>Figura e animazione</h2>
+      <div class="row">
+        <label for="shape">Figura</label>
+        <select id="shape">
+          <option value="casa">Casa</option>
+          <option value="F">Lettera F (si vede se si capovolge)</option>
+          <option value="quad">Quadrato unitario (area 1)</option>
+        </select>
+        <label for="zoom">Zoom</label>
+        <select id="zoom"><option value="3">±3</option><option value="5" selected>±5</option><option value="8">±8</option></select>
+      </div>
+      <div class="row">
+        <label for="t">Da identità ad A</label>
+        <input type="range" id="t" min="0" max="1" step="0.01" value="1">
+        <button id="play" class="primary">Anima</button>
+      </div>
+      <div class="row"><label><input type="checkbox" id="snap"> Aggancia i pallini a multipli di 0,25</label></div>
+    </div>
+
+    <div class="panel out" id="outPanel" aria-live="polite">
+      <h2>Che cosa fa A?</h2>
+      <div>Determinante: <span class="det" id="det">1</span></div>
+      <div id="eff"></div>
+      <div id="inv" style="margin-top:6px"></div>
+    </div>
+  </section>
+</main>
+
+<div id="tourOver"><div id="tourHole"></div>
+<div id="tourCard" role="dialog" aria-live="polite" aria-label="Esperienza guidata"><div id="tourKick"></div><h4 id="tourTitle"></h4><div id="tourText"></div><div id="tourDots"></div>
+<div class="tbtn"><button id="tourExit" title="Esci (Esc)">✕ Esci</button><button id="tourPrev">◀ Indietro</button><button id="tourDo"></button><button id="tourNext">Avanti ▶</button></div></div></div>
+<div id="tourMenu"><div class="tm"><div class="tmh"><h3>🎓 Esperienze guidate</h3><button id="tourMenuClose">✕ Chiudi</button></div>
+<p style="font-size:.88rem;margin:4px 0">Ogni esperienza evidenzia cosa guardare o cliccare e spiega il passaggio. Usa <b>Avanti/Indietro</b> (o le frecce della tastiera) oppure il pulsante arancione <b>“Fallo per me”</b>. Con <b>Esc</b> esci e continui da solo. <b>Consiglio:</b> parti dalla prima.</p><div id="tourMenuList"></div></div></div>
+<footer style="max-width:1200px;margin:0 auto;padding:6px 16px 16px;font-size:.8rem;color:#666">Pagina autonoma: nessun dato lascia il tuo computer.</footer>
+<script>
+(function () {
+  "use strict";
+  var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  var NAVY = "#1F3864", TEAL = "#0F6E6E", ORANGE = "#C0611B", ICOL = "#B3261E", JCOL = "#2E7D32";
+  var M = { a: 1, b: 0, c: 0, d: 1 };           // matrice bersaglio
+  var t = 1;                                       // interpolazione identità -> M
+  var R = 5;                                       // semi-ampiezza visibile
+  var shapeName = "casa";
+  var SHAPES = {
+    casa: [[0, 0], [2, 0], [2, 1.5], [1, 2.5], [0, 1.5]],
+    F: [[0, 0], [0.6, 0], [0.6, 1.2], [1.5, 1.2], [1.5, 1.8], [0.6, 1.8], [0.6, 2.4], [1.9, 2.4], [1.9, 3], [0, 3]],
+    quad: [[0, 0], [1, 0], [1, 1], [0, 1]]
+  };
+  var P = { x: 2, y: 1 }, showCons = false;
+  var $ = function (id) { return document.getElementById(id); };
+  var ids = ["a", "b", "c", "d"], inp = {};
+  ids.forEach(function (k) { inp[k] = document.getElementById(k); });
+
+  function fmt(x, dec) {
+    dec = dec === undefined ? 3 : dec;
+    var s = (Math.abs(x) < 5e-10 ? 0 : x).toFixed(dec);
+    s = s.replace(/\.?0+$/, "");
+    if (s === "-0" || s === "") s = "0";
+    return s.replace(".", ",");
+  }
+  function parse(s) {
+    var v = parseFloat(String(s).trim().replace(",", "."));
+    return isFinite(v) && /^[\s+-]?[0-9]*[.,]?[0-9]+(e[+-]?\d+)?\s*$/i.test(String(s)) ? v : null;
+  }
+  function eff() {                                   // matrice effettiva (con t)
+    return { a: 1 + t * (M.a - 1), b: t * M.b, c: t * M.c, d: 1 + t * (M.d - 1) };
+  }
+  function mul(P, Q) {                               // P·Q
+    return { a: P.a * Q.a + P.b * Q.c, b: P.a * Q.b + P.b * Q.d, c: P.c * Q.a + P.d * Q.c, d: P.c * Q.b + P.d * Q.d };
+  }
+  function apply(N, x, y) { return [N.a * x + N.b * y, N.c * x + N.d * y]; }
+
+  // ---------------------------------------------------------------- disegno
+  var W = 640, H = 640, scale = 64;
+  function resize() {
+    var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    W = Math.max(200, Math.round(r.width)); H = W;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+  function sx(x) { return W / 2 + x * scale; }
+  function sy(y) { return H / 2 - y * scale; }
+  function line(x1, y1, x2, y2, col, w, dash) {
+    ctx.beginPath(); ctx.moveTo(sx(x1), sy(y1)); ctx.lineTo(sx(x2), sy(y2));
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function poly(pts, fill, stroke, w) {
+    ctx.beginPath();
+    pts.forEach(function (p, i) { if (i) ctx.lineTo(sx(p[0]), sy(p[1])); else ctx.moveTo(sx(p[0]), sy(p[1])); });
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    ctx.strokeStyle = stroke; ctx.lineWidth = w; ctx.lineJoin = "round"; ctx.stroke();
+  }
+  function arrow(x, y, col) {
+    var x0 = sx(0), y0 = sy(0), x1 = sx(x), y1 = sy(y);
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    var ang = Math.atan2(y1 - y0, x1 - x0), L = 11;
+    if (Math.hypot(x1 - x0, y1 - y0) > 14) {
+      ctx.beginPath(); ctx.moveTo(x1, y1);
+      ctx.lineTo(x1 - L * Math.cos(ang - 0.4), y1 - L * Math.sin(ang - 0.4));
+      ctx.lineTo(x1 - L * Math.cos(ang + 0.4), y1 - L * Math.sin(ang + 0.4)); ctx.closePath(); ctx.fill();
+    }
+  }
+  function draw() {
+    scale = W / (2 * R);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    var N = eff(), k;
+    // griglia originale
+    for (k = -R; k <= R; k++) {
+      line(k, -R, k, R, k === 0 ? "#9aa5a5" : "#e3e9e9", k === 0 ? 1.6 : 1);
+      line(-R, k, R, k, k === 0 ? "#9aa5a5" : "#e3e9e9", k === 0 ? 1.6 : 1);
+    }
+    // griglia trasformata (immagini delle rette x = k e y = k)
+    var Lg = 4 * R;
+    for (k = -Lg; k <= Lg; k++) {
+      var p1 = apply(N, k, -Lg), p2 = apply(N, k, Lg), p3 = apply(N, -Lg, k), p4 = apply(N, Lg, k);
+      var col = "rgba(15,110,110," + (k === 0 ? 0.9 : 0.42) + ")", w = k === 0 ? 2 : 1;
+      line(p1[0], p1[1], p2[0], p2[1], col, w);
+      line(p3[0], p3[1], p4[0], p4[1], col, w);
+    }
+    // etichette degli assi
+    ctx.fillStyle = "#6b7777"; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "center";
+    for (k = -R; k <= R; k++) if (k !== 0 && (R <= 5 || k % 2 === 0)) {
+      ctx.fillText(k, sx(k), sy(0) + 13); ctx.textAlign = "right"; ctx.fillText(k, sx(0) - 4, sy(k) + 4); ctx.textAlign = "center";
+    }
+    // figura originale e trasformata
+    var S = SHAPES[shapeName];
+    poly(S, "rgba(31,56,100,0.10)", NAVY, 2);
+    var T = S.map(function (p) { return apply(N, p[0], p[1]); });
+    poly(T, "rgba(192,97,27,0.30)", ORANGE, 2.5);
+    // punto di prova P e immagine P' = N·P
+    var Pp = apply(N, P.x, P.y);
+    if (showCons) {
+      line(0, 0, P.x, 0, "#8a96a8", 2, [5, 4]); line(P.x, 0, P.x, P.y, "#8a96a8", 2, [5, 4]);
+      var q = [N.a * P.x, N.c * P.x];
+      line(0, 0, q[0], q[1], ICOL, 2.5, [7, 4]); line(q[0], q[1], Pp[0], Pp[1], JCOL, 2.5, [7, 4]);
+    }
+    line(P.x, P.y, Pp[0], Pp[1], "rgba(90,90,90,.5)", 1.5, [2, 3]);
+    // colonne della matrice
+    arrow(N.a, N.c, ICOL); arrow(N.b, N.d, JCOL);
+    ptDot(Pp[0], Pp[1], ORANGE, 7); ptDot(P.x, P.y, NAVY, 5);
+    var same = Math.hypot(Pp[0] - P.x, Pp[1] - P.y) < 0.15;
+    ctx.font = "bold 14px system-ui, sans-serif"; ctx.textAlign = "left";
+    ctx.fillStyle = NAVY; ctx.fillText(same ? "P = P′" : "P", sx(P.x) + 9, sy(P.y) - 9);
+    if (!same) { ctx.fillStyle = ORANGE; ctx.fillText("P′", sx(Pp[0]) + 9, sy(Pp[1]) - 9); }
+    handle(N.a, N.c, ICOL); handle(N.b, N.d, JCOL);
+  }
+  function ptDot(x, y, col, r) {
+    ctx.beginPath(); ctx.arc(sx(x), sy(y), r, 0, 2 * Math.PI);
+    ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  function handle(x, y, col) {
+    ctx.beginPath(); ctx.arc(sx(x), sy(y), 8, 0, 2 * Math.PI);
+    ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // ---------------------------------------------------------------- testi
+  function report() {
+    var det = M.a * M.d - M.b * M.c, aDet = Math.abs(det);
+    var P = function (x) { return x < 0 ? "(" + fmt(x) + ")" : fmt(x); };
+    document.getElementById("det").textContent = fmt(det) + "   (= " + P(M.a) + "·" + P(M.d) + " − " + P(M.b) + "·" + P(M.c) + ")";
+    var e = document.getElementById("eff"), iv = document.getElementById("inv"), txt;
+    if (aDet < 1e-9) {
+      txt = "<span class='warn'>Determinante 0:</span> la figura viene schiacciata su una retta (o su un punto). Si perde un'informazione e <b>la matrice non è invertibile</b>.";
+      iv.innerHTML = "Inversa: non esiste.";
+    } else {
+      txt = "Le aree vengono moltiplicate per |det| = " + fmt(aDet) + ". " +
+        (det < 0 ? "Il segno è negativo: la figura viene <b>capovolta</b> (cambia l'orientamento)." : "Il segno è positivo: l'orientamento si conserva.");
+      var inv = { a: M.d / det, b: -M.b / det, c: -M.c / det, d: M.a / det };
+      iv.innerHTML = "Inversa A<sup>−1</sup> = [ " + fmt(inv.a) + " &nbsp; " + fmt(inv.b) + " ; " + fmt(inv.c) + " &nbsp; " + fmt(inv.d) + " ] (annulla la trasformazione).";
+    }
+    e.innerHTML = txt;
+    calcPanel();
+  }
+  function mxH(a, b, c, d) { return "<span class='mx'><span class='ci'>" + a + "</span><span class='cj'>" + b + "</span><span class='ci'>" + c + "</span><span class='cj'>" + d + "</span></span>"; }
+  function vxH(a, b) { return "<span class='vx'><span>" + a + "</span><span>" + b + "</span></span>"; }
+  function calcPanel() {
+    var Pn = function (x) { return x < 0 ? "(" + fmt(x) + ")" : fmt(x); };
+    var X = P.x, Y = P.y, r = apply(M, X, Y);
+    var h = "<div class='eqrow'><b>A·P</b> = " + mxH(fmt(M.a), fmt(M.b), fmt(M.c), fmt(M.d)) + "·" + vxH(fmt(X), fmt(Y)) + "</div>";
+    h += "<div class='eqrow'>= " + vxH(
+      "<span class='ci'>" + Pn(M.a) + "</span>·" + Pn(X) + " + <span class='cj'>" + Pn(M.b) + "</span>·" + Pn(Y),
+      "<span class='ci'>" + Pn(M.c) + "</span>·" + Pn(X) + " + <span class='cj'>" + Pn(M.d) + "</span>·" + Pn(Y)
+    ) + " = " + vxH("<b>" + fmt(r[0]) + "</b>", "<b>" + fmt(r[1]) + "</b>") + " <span style='margin-left:6px'>= P′</span></div>";
+    h += "<div class='eqrow' style='font-size:.9rem'>Oppure: <b>x</b>·<span class='ci'>(1ª colonna)</span> + <b>y</b>·<span class='cj'>(2ª colonna)</span> = " +
+      Pn(X) + "·<span class='ci'>(" + fmt(M.a) + " ; " + fmt(M.c) + ")</span> + " + Pn(Y) + "·<span class='cj'>(" + fmt(M.b) + " ; " + fmt(M.d) + ")</span> = (" + fmt(r[0]) + " ; " + fmt(r[1]) + ")</div>";
+    $("calc").innerHTML = h;
+  }
+  function syncInputs() {
+    ids.forEach(function (k) { inp[k].value = fmt(M[k]); inp[k].classList.remove("bad"); });
+    report(); draw();
+  }
+
+  // ---------------------------------------------------------------- eventi
+  function syncPt() {
+    $("px").value = fmt(P.x); $("py").value = fmt(P.y);
+    $("px").classList.remove("bad"); $("py").classList.remove("bad"); calcPanel(); draw();
+  }
+  ["px", "py"].forEach(function (id) {
+    $(id).addEventListener("input", function () {
+      var v = parse($(id).value);
+      if (v === null) { $(id).classList.add("bad"); return; }
+      $(id).classList.remove("bad"); P[id === "px" ? "x" : "y"] = v; calcPanel(); draw();
+    });
+  });
+  $("cons").addEventListener("change", function () { showCons = $("cons").checked; draw(); });
+  ids.forEach(function (k) {
+    inp[k].addEventListener("input", function () {
+      var v = parse(inp[k].value);
+      if (v === null) { inp[k].classList.add("bad"); return; }
+      inp[k].classList.remove("bad"); M[k] = v; t = 1; document.getElementById("t").value = 1; report(); draw();
+    });
+  });
+  function setPreset(P) {
+    var comp = document.getElementById("comp").checked;
+    M = comp ? mul(P, M) : P; t = 1; document.getElementById("t").value = 1; syncInputs();
+  }
+  function rotMat(deg) {
+    var r = deg * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r);
+    return { a: cs, b: -sn, c: sn, d: cs };
+  }
+  var PRE = {
+    id: function () { return { a: 1, b: 0, c: 0, d: 1 }; },
+    rot: function () { return rotMat(+document.getElementById("ang").value); },
+    scal: function () { return { a: 2, b: 0, c: 0, d: 1.5 }; },
+    shear: function () { return { a: 1, b: 1, c: 0, d: 1 }; },
+    rx: function () { return { a: 1, b: 0, c: 0, d: -1 }; },
+    ry: function () { return { a: -1, b: 0, c: 0, d: 1 }; },
+    proj: function () { return { a: 1, b: 0, c: 0, d: 0 }; }
+  };
+  document.getElementById("presets").addEventListener("click", function (ev) {
+    var p = ev.target.getAttribute && ev.target.getAttribute("data-p");
+    if (p) setPreset(PRE[p]());
+  });
+  var ang = document.getElementById("ang"), angv = document.getElementById("angv");
+  ang.addEventListener("input", function () {
+    angv.textContent = ang.value + "°";
+    M = rotMat(+ang.value); t = 1; document.getElementById("t").value = 1; syncInputs();
+  });
+  document.getElementById("shape").addEventListener("change", function (e) { shapeName = e.target.value; draw(); });
+  document.getElementById("zoom").addEventListener("change", function (e) { R = +e.target.value; draw(); });
+  var tr = document.getElementById("t");
+  tr.addEventListener("input", function () { t = +tr.value; draw(); });
+  var anim = null;
+  document.getElementById("play").addEventListener("click", function () {
+    if (anim) { cancelAnimationFrame(anim); anim = null; }
+    var t0 = null, dur = 1800;
+    function step(ts) {
+      if (t0 === null) t0 = ts;
+      var u = Math.min(1, (ts - t0) / dur);
+      t = u * u * (3 - 2 * u); tr.value = t; draw();
+      anim = u < 1 ? requestAnimationFrame(step) : null;
+    }
+    t = 0; tr.value = 0; anim = requestAnimationFrame(step);
+  });
+
+  // trascinamento dei pallini (le colonne della matrice)
+  var drag = null;
+  function pos(ev) {
+    var r = cv.getBoundingClientRect();
+    return { x: (ev.clientX - r.left) / r.width * W, y: (ev.clientY - r.top) / r.height * H };
+  }
+  cv.addEventListener("pointerdown", function (ev) {
+    if (t !== 1) return;
+    var p = pos(ev);
+    var cands = [["i", M.a, M.c], ["j", M.b, M.d], ["p", P.x, P.y]], best = null;
+    cands.forEach(function (q) {
+      var dd = Math.hypot(sx(q[1]) - p.x, sy(q[2]) - p.y);
+      if (dd < 16 && (!best || dd < best.dd)) best = { id: q[0], dd: dd + (q[0] === 'p' ? 3 : 0) };
+    });
+    if (best) { drag = best.id; cv.setPointerCapture(ev.pointerId); cv.style.cursor = "grabbing"; ev.preventDefault(); }
+  });
+  cv.addEventListener("pointermove", function (ev) {
+    var p = pos(ev);
+    if (!drag) {
+      var near = Math.hypot(sx(M.a) - p.x, sy(M.c) - p.y) < 16 || Math.hypot(sx(M.b) - p.x, sy(M.d) - p.y) < 16 || Math.hypot(sx(P.x) - p.x, sy(P.y) - p.y) < 14;
+      cv.style.cursor = near && t === 1 ? "grab" : "default"; return;
+    }
+    var wx = (p.x - W / 2) / scale, wy = (H / 2 - p.y) / scale;
+    if (document.getElementById("snap").checked) { wx = Math.round(wx * 4) / 4; wy = Math.round(wy * 4) / 4; }
+    else { wx = Math.round(wx * 100) / 100; wy = Math.round(wy * 100) / 100; }
+    wx = Math.max(-3 * R, Math.min(3 * R, wx)); wy = Math.max(-3 * R, Math.min(3 * R, wy));
+    if (drag === "p") { P.x = wx; P.y = wy; syncPt(); return; }
+    if (drag === "i") { M.a = wx; M.c = wy; } else { M.b = wx; M.d = wy; }
+    syncInputs();
+  });
+  function endDrag() { drag = null; cv.style.cursor = "default"; }
+  cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+  window.addEventListener("resize", resize);
+  // esposto per i test automatici
+  window.__trasf = { get M() { return M; }, get P() { return P; }, EXPS: null, start: null };
+
+  // ================================================================ ESPERIENZE GUIDATE
+  function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } }
+  var Tt = {
+    mat: function (a, b, c, d) { stopAnim(); M = { a: a, b: b, c: c, d: d }; t = 1; tr.value = 1; syncInputs(); },
+    pt: function (x, y) { P.x = x; P.y = y; syncPt(); },
+    shape: function (n) { shapeName = n; $("shape").value = n; draw(); },
+    cons: function (on) { $("cons").checked = on; showCons = on; draw(); },
+    comp: function (on) { $("comp").checked = on; },
+    preset: function (k) { stopAnim(); setPreset(PRE[k]()); },
+    rot: function (deg) { ang.value = deg; angv.textContent = deg + "°"; stopAnim(); setPreset(rotMat(deg)); },
+    compose: function (Q) { stopAnim(); M = mul(Q, M); t = 1; tr.value = 1; syncInputs(); },
+    inv: function () { var d = M.a * M.d - M.b * M.c; return { a: M.d / d, b: -M.b / d, c: -M.c / d, d: M.a / d }; },
+    reset: function (shape) { Tt.comp(false); Tt.cons(false); Tt.mat(1, 0, 0, 1); Tt.pt(2, 1); Tt.shape(shape || "casa"); }
+  };
+  var sel = function () { return Array.prototype.slice.call(arguments); };
+  var EXPS = [
+  { id: "e0", title: "Giro della pagina", time: "3 min", desc: "A che cosa servono le varie aree. Da fare per primo.", steps: [
+    { t: "Il piano cartesiano", x: "Qui vedi il piano. La <b>griglia grigia</b> e la figura blu sono il piano <b>originale</b>; la <b>griglia verde-acqua</b> e la figura arancione sono ciò che diventano dopo la trasformazione. Ora la matrice è l’<b>identità</b> e non cambia nulla.", el: "#cv", apply: function () { Tt.reset("casa"); } },
+    { t: "La legenda", x: "Spiega i colori. In particolare: la <b>freccia rossa</b> è dove va il punto (1 ; 0) e la <b>freccia verde</b> dove va (0 ; 1). Sono le <b>due colonne</b> della matrice.", el: ".legend" },
+    { t: "La matrice A", x: "Quattro numeri modificabili. I numeri della <b>prima colonna</b> sono rossi, quelli della <b>seconda</b> verdi. Si calcola P′ = A·P.", el: "#matPanel" },
+    { t: "Il punto di prova e il calcolo", x: "Il punto blu <b>P</b> e la sua immagine arancione <b>P′</b>. Qui sotto il calcolo <b>riga per colonna</b> con i numeri veri. Puoi cambiare le coordinate di P o trascinarlo sul disegno.", el: "#ptPanel" },
+    { t: "Trasformazioni pronte", x: "Bottoni per le trasformazioni classiche (rotazione, scalatura, taglio, riflessioni, proiezione). <b>Componi</b> applica la nuova trasformazione <i>dopo</i> quella attuale.", el: "#presetPanel" },
+    { t: "Figura e animazione", x: "Scegli la figura (la lettera F serve a vedere se la figura viene capovolta) e lo zoom. Il cursore e il tasto <b>Anima</b> mostrano il passaggio graduale dall’identità alla matrice A.", el: "#figPanel" },
+    { t: "Che cosa fa A?", x: "Un riassunto: <b>determinante</b> (come cambiano le aree), se la figura viene capovolta e l’<b>inversa</b> (che annulla la trasformazione). Ora prova con un’esperienza più operativa: la prossima è “Come una matrice sposta un punto”.", el: "#outPanel" }
+  ] },
+  { id: "e1", title: "Come una matrice sposta un punto", time: "7 min", desc: "Il calcolo riga per colonna e il ruolo delle due colonne. Il cuore della pagina.", steps: [
+    { t: "Un punto e il piano", x: "Il punto blu è <b>P = (2 ; 1)</b>. Con la matrice identità ogni punto <b>resta dov’è</b>: P′ (arancione) coincide con P.", el: "#cv", apply: function () { Tt.reset("casa"); } },
+    { t: "La matrice A", x: "Sono quattro numeri <b>a, b, c, d</b>. Ora vale <b>1 0 / 0 1</b> (identità): la 1ª colonna è (1 ; 0), la 2ª è (0 ; 1).", el: "#matPanel" },
+    { t: "Scegliamo una matrice", x: "Imposta <b>a = 2, b = 0, c = 1, d = 1</b>: cioè la matrice con 1ª colonna (2 ; 1) e 2ª colonna (0 ; 1).", el: "#mat", btn: "A = [2 0 ; 1 1]", apply: function () { Tt.mat(2, 0, 1, 1); } },
+    { t: "P è stato spostato", x: "P = (2 ; 1) è diventato <b>P′ = (4 ; 3)</b>. E non solo lui: anche la casa e tutta la griglia si sono deformate. <b>La matrice trasforma tutto il piano.</b>", el: "#cv" },
+    { t: "Il calcolo riga per colonna", x: "Prima riga: <b>2·2 + 0·1 = 4</b> (coordinata x di P′). Seconda riga: <b>1·2 + 1·1 = 3</b> (coordinata y di P′). Ogni riga della matrice viene moltiplicata per P e sommata.", el: "#calc" },
+    { t: "Le colonne sono due frecce", x: "La <b style='color:#B3261E'>freccia rossa</b> arriva in (2 ; 1) = 1ª colonna: è dove è finito il punto (1 ; 0). La <b style='color:#2E7D32'>freccia verde</b> arriva in (0 ; 1) = 2ª colonna: dove è finito (0 ; 1).", el: "#cv" },
+    { t: "La costruzione di P′", x: "Attiva <b>“Mostra la costruzione”</b>. Poiché P = 2·(1 ; 0) + 1·(0 ; 1), il punto P′ si ottiene facendo <b>2 passi lungo la freccia rossa</b> e <b>1 passo lungo la verde</b>: 2·(2 ; 1) + 1·(0 ; 1) = (4 ; 3).", el: "#consRow", btn: "Mostra la costruzione", apply: function () { Tt.cons(true); } },
+    { t: "Cambiamo punto", x: "Metti <b>P = (−1 ; 2)</b>. Il calcolo dà P′ = (2·(−1)+0·2 ; 1·(−1)+1·2) = <b>(−2 ; 1)</b>. Controllalo nel riquadro.", el: "#ptPanel", btn: "P = (−1 ; 2)", apply: function () { Tt.pt(-1, 2); } },
+    { t: "Prova tu", x: "<b>Trascina il pallino verde</b> o il punto blu e osserva come cambiano matrice e calcolo. Domanda: dove deve finire il pallino rosso perché la matrice sia una rotazione di 90°? (Risposta: in (0 ; 1). Prova!)", el: "#cv" }
+  ] },
+  { id: "e2", title: "Le trasformazioni classiche", time: "6 min", desc: "Scalatura, rotazione, riflessione, taglio, proiezione: leggere la matrice dalle colonne.", steps: [
+    { t: "Partiamo dall’identità", x: "Usiamo la lettera <b>F</b>: ha un verso e permette di accorgersi se viene ruotata o capovolta.", el: "#cv", apply: function () { Tt.reset("F"); } },
+    { t: "Scalatura (2 ; 1,5)", x: "La matrice è diagonale: <b>2 0 / 0 1,5</b>. La 1ª colonna è (2 ; 0): l’asse x si allunga ×2. La 2ª è (0 ; 1,5): l’asse y si allunga ×1,5. P = (2 ; 1) va in (4 ; 1,5). <i>Osserva la figura a sinistra.</i>", el: "#presetPanel", btn: "Scalatura", apply: function () { Tt.preset("scal"); } },
+    { t: "Rotazione di 90°", x: "La 1ª colonna diventa (0 ; 1) e la 2ª (−1 ; 0): i due vettori di base ruotano insieme di 90° e la F ruota <b>senza deformarsi</b>. La matrice è <b>0 −1 / 1 0</b>. Puoi cambiare l’angolo con il cursore.", el: "#presetPanel", btn: "Ruota di 90°", apply: function () { Tt.rot(90); } },
+    { t: "Riflessione rispetto all’asse x", x: "La 2ª colonna è (0 ; −1): l’asse y viene capovolto. La F è <b>specchiata</b> e il determinante vale −1.", el: "#presetPanel", btn: "Riflessione asse x", apply: function () { Tt.preset("rx"); } },
+    { t: "Taglio", x: "La 2ª colonna è (1 ; 1): il vettore (0 ; 1) viene “inclinato” verso destra, mentre (1 ; 0) resta fermo. Le figure si <b>inclinano</b> come un mazzo di carte spinto di lato; le aree non cambiano.", el: "#presetPanel", btn: "Taglio", apply: function () { Tt.preset("shear"); } },
+    { t: "Proiezione sull’asse x", x: "La 2ª colonna è (0 ; 0): tutta l’altezza viene <b>cancellata</b> e la figura si appiattisce su una retta. Da P′ non si può più risalire a P: la trasformazione non è invertibile.<br><br><b>Prova tu:</b> imposta a mano una matrice che raddoppia solo l’asse y.", el: "#presetPanel", btn: "Proiezione", apply: function () { Tt.preset("proj"); } }
+  ] },
+  { id: "e3", title: "Determinante: area e orientamento", time: "5 min", desc: "Di quanto cambiano le aree, quando la figura si capovolge, quando si schiaccia.", steps: [
+    { t: "Il quadrato unitario", x: "Usiamo un quadrato di lato 1: la sua <b>area vale 1</b>. Vedremo in che cosa si trasforma.", el: "#cv", apply: function () { Tt.reset("quad"); } },
+    { t: "Scalatura: area ×3", x: "Il quadrato diventa un rettangolo 2 × 1,5: area <b>3</b>. Il determinante è 2·1,5 − 0·0 = <b>3</b>: è il fattore per cui si moltiplicano le aree.", el: "#outPanel", btn: "Scalatura", apply: function () { Tt.preset("scal"); } },
+    { t: "Taglio: area invariata", x: "Il quadrato diventa un parallelogramma con la stessa base e la stessa altezza: area <b>1</b>. Il determinante è 1·1 − 1·0 = <b>1</b>.", el: "#outPanel", btn: "Taglio", apply: function () { Tt.preset("shear"); } },
+    { t: "Riflessione: determinante negativo", x: "Passiamo alla lettera F. L’area resta 1 ma il determinante è <b>−1</b>: il segno negativo significa che la figura è stata <b>capovolta</b> (cambia l’orientamento).", el: "#outPanel", btn: "Riflessione + lettera F", apply: function () { Tt.shape("F"); Tt.preset("rx"); } },
+    { t: "Determinante 0: la figura collassa", x: "Con la matrice <b>1 2 / 0,5 1</b> le due colonne (1 ; 0,5) e (2 ; 1) sono <b>parallele</b>: il quadrato si schiaccia su una retta, l’area diventa 0 e la matrice <b>non è invertibile</b>.", el: "#outPanel", btn: "Imposta la matrice", apply: function () { Tt.shape("quad"); Tt.mat(1, 2, 0.5, 1); } },
+    { t: "Prova tu", x: "Trascina il pallino verde fino a metterlo sulla stessa direzione della freccia rossa: il determinante va a zero. Poi spostalo un po’ di lato: l’area riappare.", el: "#cv" }
+  ] },
+  { id: "e4", title: "Comporre due trasformazioni", time: "6 min", desc: "Il prodotto di matrici: prima l’una, poi l’altra. E l’ordine conta.", steps: [
+    { t: "Applicare due trasformazioni di fila", x: "Se prima ruotiamo e poi allunghiamo, il risultato si può descrivere con <b>una sola matrice</b>: il <b>prodotto</b> delle due. Cominciamo dalla rotazione di 90°.", el: "#cv", apply: function () { Tt.reset("casa"); Tt.rot(90); } },
+    { t: "Prima: la rotazione R", x: "La matrice è <b>R = 0 −1 / 1 0</b>. La casa è ruotata di 90° in senso antiorario.", el: "#matPanel" },
+    { t: "Attiva “Componi”", x: "Con questa casella la prossima trasformazione verrà applicata <b>dopo</b> quella attuale (la matrice diventa P·A).", el: "#comp", btn: "Attiva Componi", apply: function () { Tt.comp(true); } },
+    { t: "Poi: la scalatura S", x: "Premi <b>Scalatura</b>. La casa già ruotata viene allungata: ×2 in orizzontale, ×1,5 in verticale.", el: "#presetPanel", btn: "Applica la scalatura", apply: function () { Tt.preset("scal"); } },
+    { t: "La matrice è S·R", x: "Ora la matrice è <b>0 −2 / 1,5 0</b> = S·R. Si legge <b>da destra a sinistra</b>: il primo a entrare in azione (R) sta a destra.", el: "#matPanel" },
+    { t: "Ordine inverso: prima S, poi R", x: "Ripartiamo: <b>prima la scalatura, poi la rotazione</b>. La matrice è R·S.", el: "#matPanel", btn: "Prima S, poi R", apply: function () { Tt.comp(false); Tt.mat(1, 0, 0, 1); Tt.preset("scal"); Tt.comp(true); Tt.rot(90); } },
+    { t: "Il prodotto non è commutativo", x: "La matrice ora è <b>0 −1,5 / 2 0</b>, diversa da prima, e la casa ha un aspetto diverso: <b>R·S ≠ S·R</b>. L’ordine in cui si compongono le trasformazioni conta.<br><br><b>Prova tu:</b> con “Componi” attivo, premi più volte “Rotazione” e osserva la matrice.", el: "#matPanel", btn: "", apply: function () { } }
+  ] },
+  { id: "e5", title: "L’inversa: tornare indietro", time: "5 min", desc: "La matrice che annulla la trasformazione, e quando non esiste.", steps: [
+    { t: "Una trasformazione da annullare", x: "Applichiamo la matrice <b>A = 2 1 / 1 1</b> alla casa. Il determinante è 2·1 − 1·1 = 1.", el: "#cv", apply: function () { Tt.reset("casa"); Tt.mat(2, 1, 1, 1); } },
+    { t: "L’inversa nel pannello", x: "Il pannello calcola l’<b>inversa A⁻¹ = 1 −1 / −1 2</b>. È la matrice che “annulla” A: se applichi prima A e poi A⁻¹ torni al punto di partenza.", el: "#outPanel" },
+    { t: "Verifichiamo componendo", x: "Attiva “Componi” e applica l’inversa dopo A: la matrice complessiva A⁻¹·A diventa la <b>matrice identità 1 0 / 0 1</b> e la casa torna com’era.", el: "#matPanel", btn: "Applica A⁻¹", apply: function () { var I = Tt.inv(); Tt.comp(true); Tt.compose(I); } },
+    { t: "Quando l’inversa non esiste", x: "Con la matrice <b>1 2 / 0,5 1</b> il determinante è 0: la figura viene schiacciata su una retta e <b>non si può tornare indietro</b> (punti diversi finiscono nello stesso punto). Il pannello dice “Inversa: non esiste”.<br><br>Nell’IA: dati ridondanti (colonne proporzionali) rendono le matrici non invertibili.", el: "#outPanel", btn: "Imposta la matrice", apply: function () { Tt.comp(false); Tt.shape("casa"); Tt.mat(1, 2, 0.5, 1); } }
+  ] }
+  ];
+  var Tour = { exp: null, i: 0, done: {}, raf: 0 };
+  function tRect(el) {
+    var list = (Array.isArray(el) ? el : [el]).map(function (q) { return document.querySelector(q); }).filter(Boolean), r = null;
+    list.forEach(function (e) {
+      var b = e.getBoundingClientRect(); if (!b.width && !b.height) return;
+      r = r ? { left: Math.min(r.left, b.left), top: Math.min(r.top, b.top), right: Math.max(r.right, b.right), bottom: Math.max(r.bottom, b.bottom) } : { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+    });
+    return r;
+  }
+  function tPlace() {
+    if (!Tour.exp) return;
+    var st = Tour.exp.steps[Tour.i], card = $("tourCard"), hole = $("tourHole"), Wd0 = innerWidth, H0 = innerHeight;
+    var r = tRect(st.el), cw = card.offsetWidth, ch = card.offsetHeight;
+    if (!r) { hole.style.cssText = "left:" + Wd0 / 2 + "px;top:" + H0 / 2 + "px;width:0;height:0;outline:none"; card.style.left = Math.max(12, (Wd0 - cw) / 2) + "px"; card.style.top = Math.max(12, (H0 - ch) / 2) + "px"; return; }
+    var p = 6, Lf = r.left - p, Tp = r.top - p, Wd = r.right - r.left + 2 * p, Hh = r.bottom - r.top + 2 * p;
+    hole.style.cssText = "left:" + Lf + "px;top:" + Tp + "px;width:" + Wd + "px;height:" + Hh + "px";
+    var x = Math.min(Math.max(12, Lf), Wd0 - cw - 12), y;
+    if (H0 - (Tp + Hh) >= ch + 16) y = Tp + Hh + 12; else if (Tp >= ch + 16) y = Tp - ch - 12; else { y = H0 - ch - 12; x = Wd0 - cw - 12; }
+    card.style.left = x + "px"; card.style.top = Math.max(8, y) + "px";
+  }
+  function tLoop() { tPlace(); Tour.raf = requestAnimationFrame(tLoop); }
+  function tShow() {
+    var e = Tour.exp, st = e.steps[Tour.i], n = e.steps.length;
+    var first = document.querySelector(Array.isArray(st.el) ? st.el[0] : st.el);
+    if (first) {
+      var b = first.getBoundingClientRect(), tall = b.height > innerHeight * 0.55;
+      if (b.top < 70 || b.bottom > innerHeight - 10 || tall) first.scrollIntoView({ block: tall ? "start" : "center" });
+    }
+    $("tourKick").textContent = e.title + " · passo " + (Tour.i + 1) + " di " + n;
+    $("tourTitle").textContent = st.t; $("tourText").innerHTML = st.x;
+    $("tourDots").innerHTML = e.steps.map(function (_, k) { return "<i class='" + (k === Tour.i ? "on" : k < Tour.i ? "ok" : "") + "'></i>"; }).join("");
+    $("tourPrev").disabled = Tour.i === 0;
+    var showDo = st.apply && Tour.i > 0 && st.btn !== "";
+    $("tourDo").style.display = showDo ? "" : "none"; $("tourDo").textContent = st.btn ? "👉 " + st.btn : "👉 Fallo per me";
+    $("tourNext").textContent = Tour.i === n - 1 ? "Fine ✓" : "Avanti ▶";
+    tPlace();
+  }
+  function tApply(st) { try { st.apply && st.apply(); } catch (err) { console.error(err); } }
+  function tourStart(id) {
+    var e = EXPS.filter(function (x) { return x.id === id; })[0]; if (!e) return;
+    $("tourMenu").style.display = "none"; Tour.exp = e; Tour.i = 0;
+    $("tourOver").style.display = "block"; tApply(e.steps[0]); Tour.done = { 0: true };
+    cancelAnimationFrame(Tour.raf); tShow(); tLoop(); $("tourNext").focus();
+  }
+  function tourEnd() { Tour.exp = null; cancelAnimationFrame(Tour.raf); $("tourOver").style.display = "none"; stopAnim(); }
+  function tourNext() {
+    var e = Tour.exp; if (!e) return; var st = e.steps[Tour.i];
+    if (st.apply && Tour.i > 0 && !Tour.done[Tour.i]) tApply(st);
+    Tour.done[Tour.i] = true;
+    if (Tour.i >= e.steps.length - 1) { tourEnd(); return; } Tour.i++; tShow();
+  }
+  function tourPrev() { if (Tour.exp && Tour.i > 0) { Tour.i--; tShow(); } }
+  function tourDo() { var st = Tour.exp.steps[Tour.i]; tApply(st); Tour.done[Tour.i] = true; }
+  function tourMenu() {
+    $("tourMenuList").innerHTML = EXPS.map(function (x) { return "<button class='ex' data-id='" + x.id + "'><b>▶ " + x.title + "</b><span>" + x.desc + "</span><em>" + x.time + " · " + x.steps.length + " passi</em></button>"; }).join("");
+    $("tourMenu").style.display = "flex";
+    Array.prototype.forEach.call($("tourMenuList").querySelectorAll(".ex"), function (b) { b.onclick = function () { tourStart(b.getAttribute("data-id")); }; });
+  }
+  $("tourNext").onclick = tourNext; $("tourPrev").onclick = tourPrev; $("tourDo").onclick = tourDo; $("tourExit").onclick = tourEnd;
+  $("tourMenuBtn").onclick = tourMenu; $("tourMenuClose").onclick = function () { $("tourMenu").style.display = "none"; };
+  $("tourMenu").addEventListener("click", function (e) { if (e.target.id === "tourMenu") $("tourMenu").style.display = "none"; });
+  $("introBtn").onclick = function () { var d = $("intro"); d.open = !d.open; if (d.open) d.scrollIntoView({ block: "start" }); };
+  document.addEventListener("keydown", function (e) {
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (e.key === "Escape") { if (Tour.exp) tourEnd(); $("tourMenu").style.display = "none"; return; }
+    if (!Tour.exp || tag === "input" || tag === "select" || tag === "textarea") return;
+    if (e.key === "ArrowRight") { e.preventDefault(); tourNext(); } else if (e.key === "ArrowLeft") { e.preventDefault(); tourPrev(); }
+  });
+
+  window.__trasf.EXPS = EXPS; window.__trasf.start = tourStart;
+  syncInputs(); resize();
+  var hh = location.hash.replace("#", ""); if (hh) setTimeout(function () { tourStart(hh); }, 300);
+})();
+</script>
+</body>
+</html>

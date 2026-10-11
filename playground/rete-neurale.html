@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rete neurale</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Dalla logistica alla rete neurale</h1><p>dal neurone singolo agli strati nascosti: quando una retta non basta</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<main class="app">
+  <section>
+    <canvas id="cvMap" width="640" height="640" aria-label="Mappa della probabilità prevista dalla rete, con i punti di training e di test"></canvas>
+    <p class="hint"><span class="sw" style="background:#1f77b4"></span>classe 0 &nbsp; <span class="sw" style="background:#ff7f0e"></span>classe 1 &nbsp; ● training &nbsp; ■ test. Lo sfondo è la probabilità che la rete assegna alla classe 1.</p>
+    <div class="panel" id="pLoss" style="margin-top:10px"><h2>Costo durante l’addestramento</h2>
+      <canvas id="cvLoss" data-aspect="1" width="520" height="190" style="aspect-ratio:520/190" aria-label="Costo su training e test per epoca"></canvas>
+      <div class="hint"><span class="sw" style="background:#2E7D32"></span>training &nbsp; <span class="sw" style="background:#C0611B"></span>test</div>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="pData"><h2>1 · Dati</h2>
+      <div class="row"><label for="dSet">Insieme di dati</label>
+        <select id="dSet"><option value="blobs">Due nuvole</option><option value="circle" selected>Cerchio dentro un anello</option><option value="xor">XOR (quattro angoli)</option><option value="spiral">Spirale</option></select></div>
+      <div class="row"><label for="dNoise">Rumore</label><input type="range" id="dNoise" min="0" max="0.5" step="0.05" value="0.1"><output id="dNoiseV">0,10</output></div>
+    </div>
+    <div class="panel" id="pFeat"><h2>2 · Feature in ingresso</h2>
+      <div class="row"><label><input type="checkbox" id="f0" checked> x₁</label><label><input type="checkbox" id="f1" checked> x₂</label><label><input type="checkbox" id="f2"> x₁²</label><label><input type="checkbox" id="f3"> x₂²</label><label><input type="checkbox" id="f4"> x₁·x₂</label></div>
+    </div>
+    <div class="panel" id="pArch"><h2>3 · La rete</h2>
+      <div class="row"><label for="aL">Strati nascosti</label><select id="aL"><option>0</option><option>1</option><option>2</option><option>3</option></select>
+        <label for="aN">Neuroni per strato</label><select id="aN"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>6</option><option>8</option></select></div>
+      <div class="row"><label for="aAct">Attivazione</label><select id="aAct"><option value="tanh">tanh</option><option value="relu">ReLU</option><option value="sigmoid">sigmoide</option><option value="linear">lineare</option></select></div>
+      <p class="hint">Con <b>0 strati nascosti</b> l’uscita è un solo neurone: <b>una regressione logistica</b>.</p>
+    </div>
+    <div class="panel" id="pTrain"><h2>4 · Addestramento</h2>
+      <div class="row"><button id="bRun" class="pri">Avvia ▶</button><button id="bStep">1 epoca</button><button id="bReset">Reinizializza</button></div>
+      <div class="row"><label for="tLr">Passo α</label><select id="tLr"><option>0.01</option><option>0.03</option><option selected>0.1</option><option>0.3</option><option>1</option><option>3</option></select>
+        <label for="tLam">Regolarizzazione λ</label><select id="tLam"><option>0</option><option>0.001</option><option>0.01</option><option>0.1</option></select></div>
+      <div class="read" id="stats" style="margin-top:8px" aria-live="polite"></div>
+    </div>
+    <div class="panel" id="pNet"><h2>La rete disegnata</h2>
+      <canvas id="cvNet" data-aspect="1" width="520" height="260" style="width:100%;height:260px" aria-label="Schema della rete con i pesi"></canvas>
+      <div class="hint">Ogni riquadro mostra la <b>regione</b> che quel neurone “vede”. Le linee sono i pesi: <span style="color:#1f77b4"><b>blu positivi</b></span>, <span style="color:#ff7f0e"><b>arancio negativi</b></span>, più spessi se più grandi.</div>
+    </div>
+  </section>
+</main>
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var R = 4;
+  function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(r) { var u = 1 - r(), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function fit(cv, sq) { var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, w = Math.max(160, Math.round(r.width)), h = sq ? w : Math.max(60, Math.round(r.height)); cv._W = w; cv._H = h; cv.width = Math.round(w * d); cv.height = Math.round(h * d); cv.getContext("2d").setTransform(d, 0, 0, d, 0, 0); return cv.getContext("2d"); }
+  var FN = [function (a, b) { return a; }, function (a, b) { return b; }, function (a, b) { return a * a / 3; }, function (a, b) { return b * b / 3; }, function (a, b) { return a * b / 3; }];
+  var FNAME = ["x₁", "x₂", "x₁²", "x₂²", "x₁·x₂"];
+  var ACT = { tanh: [function (z) { return Math.tanh(z); }, function (a) { return 1 - a * a; }], relu: [function (z) { return z > 0 ? z : 0; }, function (a) { return a > 0 ? 1 : 0; }], sigmoid: [function (z) { return 1 / (1 + Math.exp(-z)); }, function (a) { return a * (1 - a); }], linear: [function (z) { return z; }, function () { return 1; }] };
+  var S = { tr: [], te: [], feats: [0, 1], sizes: [], W: [], B: [], act: "tanh", lr: 0.1, lam: 0, epoch: 0, hist: { e: [], tr: [], te: [] }, running: false, seed: 11 };
+
+  function gen() {
+    var set = $("dSet").value, nz = +$("dNoise").value, r = rng(2024), P = [], i, t, c;
+    for (i = 0; i < 200; i++) {
+      c = i % 2; var x, y;
+      if (set === "blobs") { x = (c ? 1.5 : -1.5) + gauss(r) * (0.7 + nz * 2); y = (c ? 1.2 : -1.2) + gauss(r) * (0.7 + nz * 2); }
+      else if (set === "circle") { t = r() * 6.2832; var rad = c ? Math.abs(gauss(r)) * 0.8 + 0.1 : 2.1 + r() * 1.3; rad = c ? Math.min(rad, 1.6) : rad; x = Math.cos(t) * rad + gauss(r) * nz; y = Math.sin(t) * rad + gauss(r) * nz; }
+      else if (set === "xor") { var sx = r() < .5 ? -1 : 1, sy = c ? sx : -sx; x = sx * (0.4 + r() * 2.7) + gauss(r) * nz; y = sy * (0.4 + r() * 2.7) + gauss(r) * nz; }
+      else { var n = i >> 1, th = n / 100 * 3.3 * Math.PI + 0.3, rr = th / (3.3 * Math.PI) * 3.4 + 0.2; if (c) th += Math.PI; x = Math.cos(th) * rr + gauss(r) * nz; y = Math.sin(th) * rr + gauss(r) * nz; }
+      P.push({ x: x, y: y, c: c });
+    }
+    var idx = P.map(function (_, k) { return k; }); for (var k = idx.length - 1; k > 0; k--) { var j = Math.floor(r() * (k + 1)), tt = idx[k]; idx[k] = idx[j]; idx[j] = tt; }
+    S.tr = idx.slice(0, 140).map(function (k2) { return P[k2]; }); S.te = idx.slice(140).map(function (k2) { return P[k2]; });
+  }
+  function feat(p) { return S.feats.map(function (f) { return FN[f](p.x, p.y); }); }
+  function build() {
+    S.feats = []; for (var i = 0; i < 5; i++) if ($("f" + i).checked) S.feats.push(i);
+    if (!S.feats.length) { $("f0").checked = true; S.feats = [0]; }
+    var L = +$("aL").value, N = +$("aN").value; S.act = $("aAct").value; S.sizes = [S.feats.length]; for (var l = 0; l < L; l++) S.sizes.push(N); S.sizes.push(1);
+    var r = rng(S.seed * 31 + L * 7 + N); S.W = []; S.B = [];
+    for (var l2 = 0; l2 < S.sizes.length - 1; l2++) { var nin = S.sizes[l2], nout = S.sizes[l2 + 1], lim = Math.sqrt(6 / (nin + nout)), w = []; for (var j = 0; j < nout; j++) { var row = []; for (var k = 0; k < nin; k++) row.push((r() * 2 - 1) * lim); w.push(row); } S.W.push(w); S.B.push(new Array(nout).fill(0)); }
+    S.epoch = 0; S.hist = { e: [], tr: [], te: [] }; record();
+  }
+  function forward(x) {
+    var a = [x], f = ACT[S.act][0];
+    for (var l = 0; l < S.W.length; l++) { var out = [], last = l === S.W.length - 1; for (var j = 0; j < S.W[l].length; j++) { var z = S.B[l][j]; for (var k = 0; k < a[l].length; k++) z += S.W[l][j][k] * a[l][k]; out.push(last ? 1 / (1 + Math.exp(-z)) : f(z)); } a.push(out); }
+    return a;
+  }
+  function lossAcc(pool) { var J = 0, ok = 0; pool.forEach(function (p) { var o = forward(feat(p)); var q = Math.min(Math.max(o[o.length - 1][0], 1e-9), 1 - 1e-9); J += -(p.c ? Math.log(q) : Math.log(1 - q)); if ((q >= .5 ? 1 : 0) === p.c) ok++; }); return { J: J / pool.length, acc: ok / pool.length }; }
+  function reg() { var s = 0; S.W.forEach(function (w) { w.forEach(function (r) { r.forEach(function (v) { s += v * v; }); }); }); return S.lam / (2 * S.tr.length) * s; }
+  function record() { var a = lossAcc(S.tr), b = lossAcc(S.te); S.last = { tr: a, te: b }; S.hist.e.push(S.epoch); S.hist.tr.push(a.J); S.hist.te.push(b.J); }
+  function epoch() {
+    var m = S.tr.length, df = ACT[S.act][1], gW = S.W.map(function (w) { return w.map(function (r) { return r.map(function () { return 0; }); }); }, 0), gB = S.B.map(function (b) { return b.map(function () { return 0; }); });
+    S.tr.forEach(function (p) {
+      var a = forward(feat(p)), nl = S.W.length, d = [a[nl][0] - p.c];
+      for (var l = nl - 1; l >= 0; l--) {
+        var prev = new Array(a[l].length).fill(0);
+        for (var j = 0; j < S.W[l].length; j++) { gB[l][j] += d[j]; for (var k = 0; k < a[l].length; k++) { gW[l][j][k] += d[j] * a[l][k]; prev[k] += S.W[l][j][k] * d[j]; } }
+        if (l > 0) d = prev.map(function (v, k) { return v * df(a[l][k]); });
+      }
+    });
+    for (var l2 = 0; l2 < S.W.length; l2++) for (var j2 = 0; j2 < S.W[l2].length; j2++) { S.B[l2][j2] -= S.lr * gB[l2][j2] / m; for (var k2 = 0; k2 < S.W[l2][j2].length; k2++) S.W[l2][j2][k2] -= S.lr * (gW[l2][j2][k2] / m + S.lam / m * S.W[l2][j2][k2]); }
+    S.epoch++;
+  }
+  function train(n) { for (var i = 0; i < n; i++) { epoch(); if (S.epoch % 10 === 0) record(); } record(); draw(); }
+
+  /* --------------------------- disegno --------------------------- */
+  function colAt(p, al) { var c0 = [31, 119, 180], c1 = [255, 127, 14]; return "rgba(" + Math.round(c0[0] + (c1[0] - c0[0]) * p) + "," + Math.round(c0[1] + (c1[1] - c0[1]) * p) + "," + Math.round(c0[2] + (c1[2] - c0[2]) * p) + "," + al + ")"; }
+  function mapNode(layer, idx) { return function (x, y) { var a = forward(feat({ x: x, y: y })); return a[layer][idx]; }; }
+  function heat(ctx, X, Y, W, H, fn, n, toP) { var cw = W / n, ch = H / n; for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) { var x = ((i + .5) / n * 2 - 1) * R, y = -((j + .5) / n * 2 - 1) * R; ctx.fillStyle = colAt(Math.max(0, Math.min(1, toP(fn(x, y)))), 0.85); ctx.fillRect(X + i * cw, Y + j * ch, cw + 0.6, ch + 0.6); } }
+  function toPact(v) { return S.act === "tanh" ? (v + 1) / 2 : S.act === "sigmoid" ? v : S.act === "relu" ? v / 3 : 0.5 + v / 4; }
+  function drawMap() {
+    var cv = $("cvMap"), ctx = fit(cv, true), W = cv._W, nl = S.W.length;
+    heat(ctx, 0, 0, W, W, function (x, y) { var o = forward(feat({ x: x, y: y })); return o[nl][0]; }, 64, function (v) { return v; });
+    ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, W); ctx.moveTo(0, W / 2); ctx.lineTo(W, W / 2); ctx.stroke();
+    function px(x) { return W / 2 + x * W / (2 * R); } function py(y) { return W / 2 - y * W / (2 * R); }
+    S.tr.forEach(function (p) { ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 4.6, 0, 6.3); ctx.fillStyle = p.c ? "#ff7f0e" : "#1f77b4"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke(); });
+    S.te.forEach(function (p) { ctx.fillStyle = p.c ? "#ff7f0e" : "#1f77b4"; ctx.fillRect(px(p.x) - 4, py(p.y) - 4, 8, 8); ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 1.2; ctx.strokeRect(px(p.x) - 4, py(p.y) - 4, 8, 8); });
+  }
+  function drawLoss() {
+    var cv = $("cvLoss"), ctx = fit(cv, false), W = cv._W, H = cv._H, L = 38, B = 22, T = 8, Rr = 10, h = S.hist, n = h.e.length;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    var ymax = Math.max(0.75, Math.min(2, Math.max.apply(null, h.tr.concat(h.te)) * 1.05)), emax = Math.max(100, h.e[n - 1]);
+    var px = function (e) { return L + (W - L - Rr) * e / emax; }, py = function (v) { return T + (H - T - B) * (1 - Math.min(v, ymax) / ymax); };
+    ctx.font = "11px system-ui"; ctx.fillStyle = "#6b7777"; ctx.strokeStyle = "#e3e9e9"; ctx.textAlign = "right";
+    for (var g = 0; g <= 4; g++) { var v = ymax * g / 4; ctx.beginPath(); ctx.moveTo(L, py(v)); ctx.lineTo(W - Rr, py(v)); ctx.stroke(); ctx.fillText(v.toFixed(2).replace(".", ","), L - 4, py(v) + 4); }
+    ctx.textAlign = "center"; ctx.fillText("epoche: " + emax, W / 2, H - 6);
+    [[h.tr, "#2E7D32"], [h.te, "#C0611B"]].forEach(function (s) { ctx.strokeStyle = s[1]; ctx.lineWidth = 2; ctx.beginPath(); s[0].forEach(function (v, i) { var x = px(h.e[i]), y = py(v); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.stroke(); });
+  }
+  function drawNet() {
+    var cv = $("cvNet"), maxN = Math.max.apply(null, S.sizes), hgt = Math.max(180, maxN * 50 + 20); cv.style.height = hgt + "px";
+    var ctx = fit(cv, false), W = cv._W, H = cv._H, nL = S.sizes.length, box = 38, colX = function (l) { return 30 + (W - 60 - box) * (nL === 1 ? 0 : l / (nL - 1)); }, rowY = function (l, j) { var n = S.sizes[l], gap = (H - 20) / n; return 10 + gap * (j + .5) - box / 2; };
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    for (var l = 0; l < S.W.length; l++) for (var j = 0; j < S.W[l].length; j++) for (var k = 0; k < S.W[l][j].length; k++) { var w = S.W[l][j][k]; ctx.strokeStyle = w >= 0 ? "rgba(31,119,180,.75)" : "rgba(255,127,14,.8)"; ctx.lineWidth = Math.min(6, 0.4 + Math.abs(w) * 1.1); ctx.beginPath(); ctx.moveTo(colX(l) + box, rowY(l, k) + box / 2); ctx.lineTo(colX(l + 1), rowY(l + 1, j) + box / 2); ctx.stroke(); }
+    for (var l2 = 0; l2 < nL; l2++) for (var j2 = 0; j2 < S.sizes[l2]; j2++) {
+      var X = colX(l2), Y = rowY(l2, j2); ctx.fillStyle = "#fff"; ctx.fillRect(X - 2, Y - 2, box + 4, box + 4);
+      var fn, tp; if (l2 === 0) { var f = S.feats[j2]; fn = function (x, y) { return FN[f](x, y); }; tp = function (v) { return 0.5 + v / 6; }; } else if (l2 === nL - 1) { fn = mapNode(l2, j2); tp = function (v) { return v; }; } else { fn = mapNode(l2, j2); tp = toPact; }
+      heat(ctx, X, Y, box, box, fn, 14, tp); ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 1.2; ctx.strokeRect(X, Y, box, box);
+      if (l2 === 0) { ctx.fillStyle = "#1d2433"; ctx.font = "11px system-ui"; ctx.textAlign = "right"; ctx.fillText(FNAME[S.feats[j2]], X - 4, Y + box / 2 + 4); }
+    }
+    ctx.fillStyle = "#566074"; ctx.font = "11px system-ui"; ctx.textAlign = "center"; for (var l3 = 0; l3 < nL; l3++) ctx.fillText(l3 === 0 ? "ingresso" : l3 === nL - 1 ? "uscita" : "strato " + l3, colX(l3) + box / 2, H - 2);
+  }
+  function stats() {
+    var a = S.last; var np = 0; S.W.forEach(function (w, l) { np += w.length * w[0].length + S.B[l].length; });
+    $("stats").innerHTML = "Epoca <b>" + S.epoch + "</b> · parametri <b>" + np + "</b><br>Training: costo <b>" + a.tr.J.toFixed(3).replace(".", ",") + "</b>, accuratezza <b>" + Math.round(a.tr.acc * 100) + "%</b><br>Test: costo <b>" + a.te.J.toFixed(3).replace(".", ",") + "</b>, accuratezza <b>" + Math.round(a.te.acc * 100) + "%</b>";
+  }
+  function draw() { drawMap(); drawLoss(); drawNet(); stats(); }
+
+  /* --------------------------- controlli --------------------------- */
+  var raf = 0;
+  function loop() { if (!S.running) return; train(8); raf = requestAnimationFrame(loop); }
+  function run(on) { S.running = on; $("bRun").textContent = on ? "Pausa ⏸" : "Avvia ▶"; cancelAnimationFrame(raf); if (on) loop(); }
+  $("bRun").onclick = function () { run(!S.running); };
+  $("bStep").onclick = function () { run(false); train(1); };
+  function rebuild() { run(false); readParams(); build(); draw(); }
+  $("bReset").onclick = function () { S.seed++; rebuild(); };
+  function readParams() { S.lr = +$("tLr").value; S.lam = +$("tLam").value; $("dNoiseV").textContent = (+$("dNoise").value).toFixed(2).replace(".", ","); }
+  ["aL", "aN", "aAct", "f0", "f1", "f2", "f3", "f4"].forEach(function (id) { $(id).addEventListener("change", rebuild); });
+  ["dSet", "dNoise"].forEach(function (id) { $(id).addEventListener("input", function () { run(false); readParams(); gen(); build(); draw(); }); });
+  ["tLr", "tLam"].forEach(function (id) { $(id).addEventListener("change", function () { readParams(); }); });
+  window.addEventListener("resize", draw);
+
+  /* --------------------------- esperienze --------------------------- */
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setc(id, on) { var e = $(id); e.checked = on; }
+  function cfg(o) { run(false); o = Object.assign({ set: "circle", noise: 0.1, feats: [0, 1], L: 0, N: 3, act: "tanh", lr: 0.1, lam: 0, seed: 11 }, o);
+    $("dSet").value = o.set; $("dNoise").value = o.noise; for (var i = 0; i < 5; i++) setc("f" + i, o.feats.indexOf(i) >= 0); $("aL").value = o.L; $("aN").value = o.N; $("aAct").value = o.act; $("tLr").value = o.lr; $("tLam").value = o.lam; S.seed = o.seed;
+    readParams(); gen(); build(); draw(); }
+  function sel() { return Array.prototype.slice.call(arguments); }
+  var EXPS = [
+    { id: "n1", title: "Un neurone è una regressione logistica", time: "5 min", desc: "Senza strati nascosti la rete è la regressione logistica: una retta come confine.", steps: [
+      { t: "Due nuvole di punti", x: "Questi punti hanno due classi (blu = 0, arancione = 1) e due misure <b>x₁</b> e <b>x₂</b>. Il compito: prevedere la classe di un punto dalle sue coordinate.", el: "#cvMap", apply: function () { cfg({ set: "blobs", noise: 0.3, feats: [0, 1], L: 0, seed: 7 }); } },
+      { t: "La rete più piccola possibile", x: "Con <b>0 strati nascosti</b> c’è un solo neurone di uscita: calcola z = θ₀ + θ₁x₁ + θ₂x₂ e poi la <b>sigmoide</b>. È <b>esattamente la regressione logistica</b> . Guarda lo schema: due ingressi, un’uscita.", el: "#pNet" },
+      { t: "Addestra", x: "Premi <b>Avvia</b>: a ogni epoca i pesi vengono corretti con la <b>discesa del gradiente</b> per ridurre il costo (log-loss). Guarda il costo scendere e lo sfondo prendere forma.", el: "#pTrain", btn: "Avvia ▶", apply: function () { run(true); } },
+      { t: "Il confine è una retta", x: "Lo sfondo cambia colore lungo una <b>retta</b>: è il confine di decisione θ₀ + θ₁x₁ + θ₂x₂ = 0. Le linee blu e arancione dello schema sono i pesi θ₁ e θ₂.", el: "#cvMap", btn: "Pausa ⏸", apply: function () { run(false); train(200); } },
+      { t: "I numeri della valutazione", x: "Il riquadro mostra costo e accuratezza su <b>training</b> (punti tondi) e su <b>test</b> (quadrati), che la rete non ha mai usato per imparare. Qui sono simili e alte: il modello va bene. Non arriva al 100% perché le due nuvole si sovrappongono un poco.", el: "#stats" }
+    ] },
+    { id: "n2", title: "XOR: una retta non basta", time: "7 min", desc: "Il problema che i neuroni singoli non risolvono, e come lo risolve uno strato nascosto.", steps: [
+      { t: "Quattro angoli", x: "I punti arancioni stanno in due angoli opposti, i blu negli altri due (<b>XOR</b>: la classe dipende dal <b>segno del prodotto</b> x₁·x₂). Nessuna retta separa i due colori.", el: "#cvMap", apply: function () { cfg({ set: "xor", noise: 0.1, feats: [0, 1], L: 0 }); } },
+      { t: "Proviamo con un neurone solo", x: "Con 0 strati nascosti addestriamo per 300 epoche.", el: "#pTrain", btn: "Addestra 300 epoche", apply: function () { train(300); } },
+      { t: "Resta a metà", x: "Guarda l’<b>accuratezza sul training</b>: vicina al caso (50%) e il costo resta alto. Una sola retta taglia il piano in due semipiani, ma i colori sono in diagonale. Il neurone non ha abbastanza “forma”.", el: sel("#cvMap", "#stats") },
+      { t: "Aggiungiamo uno strato nascosto", x: "Imposta <b>1 strato nascosto con 4 neuroni</b>: i neuroni intermedi calcolano ciascuno una propria combinazione di x₁ e x₂, e il neurone di uscita le combina.", el: "#pArch", btn: "1 strato, 4 neuroni", apply: function () { cfg({ set: "xor", noise: 0.1, feats: [0, 1], L: 1, N: 4, lr: 0.3 }); } },
+      { t: "Addestra", x: "Addestriamo per 1500 epoche. Il costo scende molto di più, e lo sfondo prende la forma dei quattro angoli.", el: "#pTrain", btn: "Addestra 1500 epoche", apply: function () { train(1500); } },
+      { t: "Ogni neurone traccia una regione", x: "Nello schema ogni riquadro intermedio mostra la regione di un <b>neurone nascosto</b>: ciascuno ha imparato una <b>retta</b> (sfumata). L’uscita le combina in una forma non lineare. Le reti neurali <b>inventano da sole le feature</b> che servono.", el: "#pNet" }
+    ] },
+    { id: "n3", title: "Feature a mano o strato nascosto?", time: "7 min", desc: "Il cerchio si separa con x₁² e x₂², oppure facendo scoprire la non linearità alla rete.", steps: [
+      { t: "Un cerchio dentro un anello", x: "I punti arancioni stanno al centro, i blu tutt’intorno. Nessuna retta funziona.", el: "#cvMap", apply: function () { cfg({ set: "circle", noise: 0.1, feats: [0, 1], L: 0 }); } },
+      { t: "Con x₁ e x₂ non basta", x: "Addestriamo il neurone singolo con le sole x₁ e x₂.", el: "#pTrain", btn: "Addestra 500 epoche", apply: function () { train(500); } },
+      { t: "Accuratezza bassa", x: "L’accuratezza è lontana dal 100% e il costo resta alto: un neurone con x₁ e x₂ traccia solo rette.", el: "#stats" },
+      { t: "Soluzione 1: aggiungiamo x₁² e x₂²", x: "Accendi le feature <b>x₁²</b> e <b>x₂²</b> e riaddestra. Il modello resta una logistica (0 strati), ma con feature <b>non lineari</b>: il confine z = 0 diventa una circonferenza. È l’idea dei polinomi della regressione.", el: "#pFeat", btn: "Aggiungi x₁², x₂²", apply: function () { cfg({ set: "circle", noise: 0.1, feats: [0, 1, 2, 3], L: 0, lr: 0.3 }); train(1200); } },
+      { t: "Funziona", x: "Il confine è un cerchio e l’accuratezza è alta. Ma <b>abbiamo dovuto sapere noi</b> che servivano i quadrati.", el: sel("#cvMap", "#stats") },
+      { t: "Soluzione 2: la rete trova da sola le feature", x: "Togli x₁² e x₂² e metti <b>1 strato nascosto con 4 neuroni</b>: stesso risultato, senza scegliere noi le feature. Questa è la ragione per cui servono le reti neurali: <b>apprendono le feature</b>.", el: "#pArch", btn: "1 strato, 4 neuroni", apply: function () { cfg({ set: "circle", noise: 0.1, feats: [0, 1], L: 1, N: 4, lr: 0.3 }); train(2500); } },
+      { t: "Prova tu", x: "Passa alla <b>spirale</b>: serve più capacità. Prova 2 strati da 6 neuroni, oppure aggiungi feature. Che cosa succede con un solo neurone nascosto?", el: "#pData" }
+    ] },
+    { id: "n4", title: "Troppa capacità: l’overfitting", time: "7 min", desc: "Rete grande, pochi dati e rumore: il test peggiora. La regolarizzazione aiuta.", steps: [
+      { t: "Dati con molto rumore", x: "Due nuvole che <b>si sovrappongono molto</b>: nella zona centrale i punti dei due gruppi sono mescolati. Nessun modello potrà classificarli tutti bene.", el: "#cvMap", apply: function () { cfg({ set: "blobs", noise: 0.5, feats: [0, 1], L: 2, N: 8, lr: 0.3, seed: 5 }); } },
+      { t: "Una rete grande", x: "Ora abbiamo <b>2 strati da 8 neuroni</b>: oltre cento parametri per 140 punti di addestramento. Troppa libertà.", el: "#pArch" },
+      { t: "Addestra a lungo", x: "Addestriamo per 4000 epoche.", el: "#pTrain", btn: "Addestra 4000 epoche", apply: function () { train(4000); } },
+      { t: "Training bene, test peggio", x: "Guarda il grafico del costo: la curva del <b>training</b> (verde) continua a scendere, quella del <b>test</b> (arancione) si ferma e poi <b>risale</b>. La rete sta imparando il rumore: è <b>overfitting</b>. Confronta le accuratezze.", el: sel("#pLoss", "#stats") },
+      { t: "La cura: regolarizzazione λ", x: "Porta <b>λ a 0,1</b> e riaddestra da capo: i pesi grandi vengono penalizzati (come nella regressione) e la frontiera si addolcisce.", el: "#pTrain", btn: "λ = 0,1 e riaddestra", apply: function () { cfg({ set: "blobs", noise: 0.5, feats: [0, 1], L: 2, N: 8, lr: 0.3, lam: 0.1, seed: 5 }); train(4000); } },
+      { t: "Confronta", x: "Con λ il costo di test è <b>più basso</b>, il divario con il training più piccolo e la frontiera più semplice. Un’altra cura è <b>meno neuroni</b> o <b>più dati</b>. Il punto: più parametri non significa un modello migliore.", el: sel("#pLoss", "#stats") }
+    ] }
+  ];
+  window.__nn = { S: S, train: train, cfg: cfg, EXPS: EXPS };
+  Tour.init(EXPS);
+  readParams(); gen(); build(); draw();
+  window.addEventListener("load", draw);
+})();
+</script>
+</body>
+</html>

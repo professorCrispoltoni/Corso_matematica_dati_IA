@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alberi di decisione ed entropia</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  .alb-wide{grid-column:1/-1}
+  main.app>section{min-width:0}
+  .app .hint,.hint{font-size:.875rem}
+  .alb-tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+  #aTbl{font-size:.88rem;min-width:430px}
+  #aTbl th,#aTbl td{padding:4px 5px;white-space:nowrap}
+  #aTbl th{font-size:.78rem}
+  #aTbl td.n{color:var(--mute);text-align:right;width:28px}
+  #aTbl select{padding:3px 4px;max-width:104px}
+  #aTbl tr.insel td{background:#fff6e8}
+  #aTbl tr.out td{opacity:.4}
+  .app button.alb-cl{min-width:46px;font-weight:700;color:#fff;border:0;padding:4px 8px}
+  .app button.alb-cl.y{background:#0F6E6E}.app button.alb-cl.n{background:#C0611B}
+  .app button.alb-x{padding:2px 8px;border-color:#b6bfc0;color:#8a2a22}
+  .alb-bar{display:flex;height:26px;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin:6px 0;background:#fff}
+  .alb-bar span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.88rem;font-weight:700;min-width:0;overflow:hidden}
+  .alb-meter{position:relative;height:16px;border-radius:8px;border:1px solid var(--line);background:linear-gradient(90deg,#d6ecec,#f6e3c8,#f0b98a);margin:6px 0 2px}
+  .alb-meter i{position:absolute;top:-4px;width:6px;height:22px;background:var(--navy);border-radius:3px;transform:translateX(-3px)}
+  .alb-scale{display:flex;justify-content:space-between;font-size:.8rem;color:var(--mute)}
+  .alb-f{font:.92rem/1.7 ui-monospace,Menlo,Consolas,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px 10px;overflow-x:auto;white-space:pre}
+  .app button.alb-g{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;width:100%;text-align:left;margin-top:6px;padding:7px 10px;align-items:center}
+  .app button.alb-g.on{background:var(--soft);outline:2px solid var(--navy)}
+  .app button.alb-g .gb{grid-column:1/-1;height:8px;border-radius:4px;background:#e1e8e8;overflow:hidden}
+  .app button.alb-g .gb i{display:block;height:100%;background:var(--teal)}
+  .app button.alb-g.win .gb i{background:var(--orange)}
+  .alb-det{overflow-x:auto}
+  .alb-det table{font-size:.88rem}
+  .alb-det th{white-space:normal}
+  .alb-det td,.alb-det th{padding:4px 6px}
+  #aTreeBox{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+  #aTreeBox svg{display:block;margin:0 auto}
+  #aTreeBox g.nd{cursor:pointer}
+  #aTreeBox g.nd:focus-visible rect.nb{stroke:#f2b266;stroke-width:4}
+  .alb-try select{margin-right:4px}
+  .alb-try .row label{display:flex;gap:4px;align-items:center}
+  .alb-res{font-weight:600}
+  #pOut b.hi{color:var(--orange)}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Alberi di decisione ed entropia</h1><p>scegliere le domande che separano meglio le classi</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="wrap" style="padding-top:12px"><div class="tabs" role="tablist"><button id="tbT" class="on" role="tab">Tabella e entropia</button><button id="tbP" role="tab">Albero sul piano</button></div></div>
+
+<!-- ============ TABELLA ============ -->
+<main class="app" id="pT">
+  <section>
+    <div class="panel" id="aTblP"><h2>I dati: uscire a fare una passeggiata?</h2>
+      <div class="alb-tw"><table id="aTbl" aria-label="Tabella delle giornate con cielo, temperatura, umidità, vento e decisione"><thead><tr><th>#</th><th>cielo</th><th>temperatura</th><th>umidità</th><th>vento</th><th>uscire?</th><th></th></tr></thead><tbody id="aBody"></tbody></table></div>
+      <div class="row"><button id="aAdd">+ Aggiungi riga</button><button id="aAllY">Tutte sì</button><button id="aHalf">Metà e metà</button><button id="aReset">Ripristina</button></div>
+      <p class="hint">Cambia un valore con i menu, clicca <b>sì/no</b> per cambiare la decisione, <b>✕</b> toglie la riga. Clicca un nodo dell’albero per vedere solo le sue righe.</p>
+    </div>
+    <div class="panel read" id="aEnt" aria-live="polite"><h2>Entropia del nodo</h2>
+      <div id="aEntLbl"></div>
+      <div class="alb-bar" id="aEntBar" role="img" aria-label="Proporzione di sì e no nel nodo"></div>
+      <div class="alb-meter" id="aMeter"><i id="aMeterI"></i></div>
+      <div class="alb-scale"><span>puro (H = 0)</span><span>mescolanza</span><span>50 e 50 (H = 1)</span></div>
+      <div class="alb-f" id="aEntF" style="margin-top:8px"></div>
+    </div>
+  </section>
+  <section>
+    <div class="panel read" id="aGain"><h2>Information gain: quale domanda per prima?</h2>
+      <p class="hint" style="margin-top:0">Guadagno = entropia del nodo − entropia media dopo la divisione. Clicca un attributo per vedere tutti i calcoli.</p>
+      <div id="aGainList"></div>
+      <div class="alb-det" id="aGainD" aria-live="polite"></div>
+    </div>
+  </section>
+  <section class="alb-wide">
+    <div class="panel" id="aTreeP"><h2>Costruisci l’albero</h2>
+      <div class="row"><button id="aBuild" class="pri">Costruisci l’albero ▶</button><button id="aAll">Tutto subito</button><button id="aClear">Azzera</button>
+        <label for="aDepth">Profondità massima</label><input type="range" id="aDepth" min="1" max="4" value="3"><output id="aDepthV">3</output></div>
+      <p class="hint" id="aTreeSt" aria-live="polite"></p>
+      <div id="aTreeBox"></div>
+      <p class="hint"><span class="sw" style="background:#0F6E6E"></span>foglia “sì” &nbsp; <span class="sw" style="background:#C0611B"></span>foglia “no” &nbsp; H = entropia del nodo. Un nodo tratteggiato deve ancora essere diviso.</p>
+    </div>
+    <div class="panel alb-try read" id="aTry"><h2>Prova un nuovo esempio</h2>
+      <div class="row" id="aTryRow"></div>
+      <p class="alb-res" id="aTryOut" aria-live="polite" style="margin-top:8px"></p>
+    </div>
+  </section>
+</main>
+
+<!-- ============ PIANO ============ -->
+<main class="app" id="pP" hidden>
+  <section>
+    <canvas id="cvP" width="640" height="640" aria-label="Piano con punti di due classi e le regioni rettangolari di decisione dell’albero"></canvas>
+    <p class="hint"><span class="sw" style="background:#1f77b4"></span>classe A &nbsp; <span class="sw" style="background:#ff7f0e"></span>classe B &nbsp; cerchi = training, quadrati = test. Le righe scure sono le divisioni dell’albero.</p>
+  </section>
+  <section>
+    <div class="panel" id="pData"><h2>Dati</h2>
+      <div class="row"><label for="pSet">Insieme di dati</label>
+        <select id="pSet"><option value="over" selected>Due nuvole sovrapposte</option><option value="blobs">Due nuvole separate</option><option value="moons">Due mezzelune</option><option value="xor">Quattro quadranti (XOR)</option></select></div>
+      <div class="row"><label for="pSeed">Seme</label><input type="range" id="pSeed" min="1" max="20" value="4"><output id="pSeedV">4</output></div>
+      <div class="row"><label for="pNoise">Etichette sbagliate</label><input type="range" id="pNoise" min="0" max="30" step="5" value="0"><output id="pNoiseV">0%</output></div>
+      <div class="row"><label><input type="checkbox" id="pTest" checked> Mostra i punti di test</label></div>
+    </div>
+    <div class="panel" id="pParams"><h2>L’albero</h2>
+      <div class="row"><label for="pDepth">Profondità</label><input type="range" id="pDepth" min="1" max="10" value="3"><output id="pDepthV">3</output></div>
+      <div class="row"><label for="pCrit">Come si sceglie la divisione</label><select id="pCrit"><option value="g">Gini</option><option value="e">Entropia</option></select></div>
+    </div>
+    <div class="panel read" id="pOut" aria-live="polite"><h2>Che cosa vede l’albero</h2><div id="pOutT"></div></div>
+    <div class="panel" id="pChartP"><h2>Accuratezza al variare della profondità</h2>
+      <canvas id="cvC" data-aspect="1" width="520" height="210" aria-label="Accuratezza su training e test al variare della profondità dell’albero" style="aspect-ratio:520/210"></canvas>
+      <div class="hint"><span class="sw" style="background:#2E7D32"></span>training &nbsp; <span class="sw" style="background:#C0611B"></span>test &nbsp; ○ profondità attuale. Si addestra sul 70% dei punti e si verifica sul 30%.</div>
+    </div>
+  </section>
+</main>
+
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function f(x, d) { return (+x).toFixed(d).replace(".", ",").replace("-", "−"); }
+  function pc(x) { return f(x * 100, 0) + "%"; }
+  function rng(seed) { var a = seed >>> 0; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function gauss(r) { var u = 1 - r(), v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function H(a, b) { var n = a + b, h = 0; if (!n) return 0; [a, b].forEach(function (k) { if (k > 0) { var p = k / n; h -= p * Math.log2(p); } }); return h || 0; }
+
+  /* ================================ TABELLA ================================ */
+  var ATT = [{ n: "cielo", v: ["sereno", "nuvoloso", "pioggia"] }, { n: "temperatura", v: ["caldo", "mite", "freddo"] }, { n: "umidità", v: ["alta", "normale"] }, { n: "vento", v: ["debole", "forte"] }];
+  var BASE = [[0, 0, 0, 0, 0], [0, 0, 0, 1, 0], [1, 0, 0, 0, 1], [2, 1, 0, 0, 1], [2, 2, 1, 0, 1], [2, 2, 1, 1, 0], [1, 2, 1, 1, 1], [0, 1, 0, 0, 0], [0, 2, 1, 0, 1], [2, 1, 1, 0, 1], [0, 1, 1, 1, 1], [1, 1, 0, 1, 1], [1, 0, 1, 0, 1], [2, 1, 0, 1, 0]];
+  var S = { rows: [], tree: null, shown: 0, maxD: 3, sel: "", ex: [0, 1, 0, 0] };
+  function resetRows() { S.rows = BASE.map(function (r) { return { a: r.slice(0, 4), c: r[4] }; }); }
+  function cnt(rows) { var y = 0; rows.forEach(function (r) { y += r.c; }); return [y, rows.length - y]; }
+  function gainOf(rows, ai) {
+    var c = cnt(rows), h0 = H(c[0], c[1]), parts = [], after = 0;
+    ATT[ai].v.forEach(function (vn, vi) {
+      var sub = rows.filter(function (r) { return r.a[ai] === vi; }); if (!sub.length) return;
+      var cc = cnt(sub), hv = H(cc[0], cc[1]), w = sub.length / rows.length; after += w * hv;
+      parts.push({ name: vn, vi: vi, n: sub.length, y: cc[0], no: cc[1], h: hv, w: w });
+    });
+    return { ai: ai, h0: h0, parts: parts, after: after, gain: h0 - after };
+  }
+  function build(rows, avail, depth, path, maxD) {
+    var c = cnt(rows), nd = { rows: rows, y: c[0], no: c[1], h: H(c[0], c[1]), depth: depth, path: path, avail: avail, kids: [], leaf: true, gains: [], best: null };
+    nd.gains = rows.length ? avail.map(function (ai) { return gainOf(rows, ai); }) : [];
+    nd.gains.forEach(function (g) { if (!nd.best || g.gain > nd.best.gain + 1e-12) nd.best = g; });
+    if (!rows.length || nd.h === 0 || depth >= maxD || !avail.length || !nd.best || nd.best.gain <= 1e-12) return nd;
+    nd.leaf = false; nd.split = nd.best.ai;
+    ATT[nd.split].v.forEach(function (vn, vi) {
+      var sub = rows.filter(function (r) { return r.a[nd.split] === vi; }); if (!sub.length) return;
+      var ch = build(sub, avail.filter(function (x) { return x !== nd.split; }), depth + 1, path + "/" + nd.split + "=" + vi, maxD);
+      ch.vi = vi; ch.vname = vn; nd.kids.push(ch);
+    });
+    return nd;
+  }
+  function height(nd) { var m = 0; nd.kids.forEach(function (k) { m = Math.max(m, 1 + height(k)); }); return m; }
+  function find(nd, path) { if (nd.path === path) return nd; for (var i = 0; i < nd.kids.length; i++) { var r = find(nd.kids[i], path); if (r) return r; } return null; }
+  function rebuild() { S.tree = build(S.rows, [0, 1, 2, 3], 0, "", S.maxD); if (!find(S.tree, S.sel)) S.sel = ""; S.shown = Math.min(S.shown, height(S.tree)); }
+  function expanded(nd) { return !nd.leaf && nd.depth < S.shown; }
+  function selNode() { return find(S.tree, S.sel) || S.tree; }
+  function nodeLabel(nd) {
+    if (!nd.path) return "tutte le giornate (radice)";
+    return nd.path.slice(1).split("/").map(function (p) { var q = p.split("="); return ATT[+q[0]].n + " = " + ATT[+q[0]].v[+q[1]]; }).join(" e ");
+  }
+  function majority(nd) { return nd.y > nd.no ? 1 : nd.no > nd.y ? 0 : -1; }
+
+  /* ---- tabella HTML ---- */
+  function renderTable() {
+    var h = "";
+    S.rows.forEach(function (r, i) {
+      h += "<tr data-r='" + i + "'><td class='n'>" + (i + 1) + "</td>";
+      ATT.forEach(function (a, ai) {
+        h += "<td><select data-r='" + i + "' data-a='" + ai + "' aria-label='riga " + (i + 1) + ", " + a.n + "'>" + a.v.map(function (v, vi) { return "<option value='" + vi + "'" + (r.a[ai] === vi ? " selected" : "") + ">" + v + "</option>"; }).join("") + "</select></td>";
+      });
+      h += "<td><button class='alb-cl " + (r.c ? "y" : "n") + "' data-r='" + i + "' aria-label='riga " + (i + 1) + ": uscire? clicca per cambiare'>" + (r.c ? "sì" : "no") + "</button></td><td><button class='alb-x' data-r='" + i + "' aria-label='togli la riga " + (i + 1) + "'>✕</button></td></tr>";
+    });
+    $("aBody").innerHTML = h;
+  }
+  $("aBody").addEventListener("change", function (e) { var t = e.target; if (t.tagName !== "SELECT") return; S.rows[+t.dataset.r].a[+t.dataset.a] = +t.value; update(); });
+  $("aBody").addEventListener("click", function (e) {
+    var t = e.target; if (t.tagName !== "BUTTON") return; var i = +t.dataset.r;
+    if (t.classList.contains("alb-cl")) { S.rows[i].c = 1 - S.rows[i].c; t.className = "alb-cl " + (S.rows[i].c ? "y" : "n"); t.textContent = S.rows[i].c ? "sì" : "no"; update(); }
+    else if (t.classList.contains("alb-x")) { S.rows.splice(i, 1); renderTable(); update(); }
+  });
+  $("aAdd").onclick = function () { if (S.rows.length >= 30) return; S.rows.push({ a: [0, 0, 0, 0], c: 1 }); renderTable(); update(); };
+  function setAll(fn) { S.rows.forEach(function (r, i) { r.c = fn(i); }); renderTable(); update(); }
+  $("aAllY").onclick = function () { setAll(function () { return 1; }); };
+  $("aHalf").onclick = function () { setAll(function (i) { return i % 2; }); };
+  $("aReset").onclick = function () { resetRows(); S.shown = 0; S.sel = ""; renderTable(); update(); };
+
+  /* ---- entropia ---- */
+  function renderEnt() {
+    var nd = selNode(), n = nd.rows.length, y = nd.y, no = nd.no;
+    $("aEntLbl").innerHTML = "Nodo: <b>" + nodeLabel(nd) + "</b> · <b>" + n + "</b> esempi: <b>" + y + " sì</b> e <b>" + no + " no</b>.";
+    $("aEntBar").innerHTML = n ? "<span style='background:#0F6E6E;width:" + (y / n * 100) + "%'>" + (y ? y + " sì" : "") + "</span><span style='background:#C0611B;width:" + (no / n * 100) + "%'>" + (no ? no + " no" : "") + "</span>" : "";
+    $("aMeterI").style.left = (nd.h * 100) + "%";
+    var F;
+    if (!n) F = "Nessuna riga: aggiungi qualche esempio.";
+    else {
+      var terms = [], num = [], val = [], tot = 0;
+      [[y, "sì"], [no, "no"]].forEach(function (q) { if (q[0] > 0) { var p = q[0] / n, t = -p * Math.log2(p); tot += t; terms.push("−(" + q[0] + "/" + n + ")·log₂(" + q[0] + "/" + n + ")"); num.push("−" + f(p, 4) + "·(" + f(Math.log2(p), 4) + ")"); val.push(f(t, 4)); } });
+      F = "H = −Σ p·log₂ p   (le classi con p = 0 non contano)\n";
+      F += "H = " + terms.join(" ") + "\n";
+      F += "H = " + num.join("  ") + "\n";
+      F += "H = " + val.join(" + ") + " = " + f(tot, 4) + "  →  H ≈ " + f(nd.h, 3);
+    }
+    $("aEntF").textContent = F;
+  }
+
+  /* ---- guadagno ---- */
+  var gsel = 0;
+  function renderGain() {
+    var nd = selNode(), L = $("aGainList"), D = $("aGainD");
+    if (!nd.gains.length) { L.innerHTML = "<p class='hint'>Questo nodo non si può dividere (nessun esempio o nessun attributo rimasto).</p>"; D.innerHTML = ""; return; }
+    var mx = Math.max(nd.h, 1e-9), h = "";
+    if (!nd.gains.some(function (g) { return g.ai === gsel; })) gsel = nd.best.ai;
+    nd.gains.forEach(function (g) {
+      var win = g === nd.best && g.gain > 1e-12;
+      h += "<button class='alb-g" + (win ? " win" : "") + (g.ai === gsel ? " on" : "") + "' data-ai='" + g.ai + "'><span><b>" + ATT[g.ai].n + "</b>" + (win ? " ★ vince" : "") + "</span><span>guadagno <b>" + f(g.gain, 3) + "</b></span><span class='gb'><i style='width:" + Math.max(0, g.gain / mx * 100) + "%'></i></span></button>";
+    });
+    L.innerHTML = h;
+    var g = nd.gains.filter(function (q) { return q.ai === gsel; })[0], a = ATT[g.ai], t = "<h3 style='margin-top:10px'>Dividere per «" + a.n + "»</h3><table><thead><tr><th>" + a.n + "</th><th>esempi</th><th>sì / no</th><th>H</th><th>peso</th></tr></thead><tbody>";
+    g.parts.forEach(function (p) { t += "<tr><td>" + p.name + "</td><td>" + p.n + "</td><td>" + p.y + " / " + p.no + "</td><td>" + f(p.h, 4) + "</td><td>" + p.n + "/" + nd.rows.length + "</td></tr>"; });
+    t += "</tbody></table>";
+    var sum = g.parts.map(function (p) { return p.n + "/" + nd.rows.length + "·" + f(p.h, 4); }).join(" + "), a4 = +g.after.toFixed(4), h4 = +g.h0.toFixed(4);
+    t += "<div class='alb-f' style='margin-top:8px'>entropia dopo = Σ (nᵥ/n)·Hᵥ\n= " + sum + "\n= " + f(g.after, 4) + "\nguadagno = H(nodo) − entropia dopo\n= " + f(h4, 4) + " − " + f(a4, 4) + " = " + f(h4 - a4, 4) + "  →  " + f(g.gain, 3) + "</div>";
+    D.innerHTML = t;
+  }
+  $("aGainList").addEventListener("click", function (e) { var b = e.target.closest("button.alb-g"); if (!b) return; gsel = +b.dataset.ai; renderGain(); });
+
+  /* ---- albero SVG ---- */
+  var NW = 128, NH = 68, SX = 150, SY = 124, PADT = 14;
+  function layout(nd, st) {
+    if (!expanded(nd)) { nd.px = st.x; st.x += SX; nd.vis = true; return; }
+    nd.vis = true; nd.kids.forEach(function (k) { layout(k, st); });
+    nd.px = (nd.kids[0].px + nd.kids[nd.kids.length - 1].px) / 2;
+  }
+  function pathSet() {
+    var set = {}, nd = S.tree, ok = S.rows.length > 0; set[""] = 1; var info = { steps: [], end: nd };
+    while (expanded(nd)) {
+      var v = S.ex[nd.split], ch = nd.kids.filter(function (k) { return k.vi === v; })[0];
+      if (!ch) { info.missing = ATT[nd.split].v[v]; break; }
+      set[ch.path] = 1; info.steps.push(ATT[nd.split].n + " = " + ATT[nd.split].v[v]); nd = ch;
+    }
+    info.end = nd; info.set = set; return info;
+  }
+  function renderTree() {
+    var box = $("aTreeBox"); if (!S.rows.length) { box.innerHTML = "<p class='hint' style='padding:10px'>Nessun dato: aggiungi qualche riga.</p>"; return; }
+    var st = { x: 0 }; layout(S.tree, st);
+    var pi = pathSet(), W = Math.max(st.x, 300), maxd = 0, out = "";
+    (function mx(nd) { maxd = Math.max(maxd, nd.depth); if (expanded(nd)) nd.kids.forEach(mx); })(S.tree);
+    var Hh = PADT + maxd * SY + NH + 12, hasPath = true;
+    function edges(nd) {
+      if (!expanded(nd)) return;
+      nd.kids.forEach(function (k) {
+        var x1 = nd.px + SX / 2, y1 = PADT + nd.depth * SY + NH, x2 = k.px + SX / 2, y2 = PADT + k.depth * SY, on = pi.set[k.path] && pi.set[nd.path];
+        out += "<path d='M" + x1 + " " + y1 + " C" + x1 + " " + (y1 + 30) + " " + x2 + " " + (y2 - 30) + " " + x2 + " " + y2 + "' fill='none' stroke='" + (on ? "#C0611B" : "#8896a0") + "' stroke-width='" + (on ? 4 : 1.6) + "'/>";
+        var mxp = (x1 + x2) / 2, myp = (y1 + y2) / 2, lab = k.vname, tw = lab.length * 7.6 + 10;
+        out += "<rect x='" + (mxp - tw / 2) + "' y='" + (myp - 11) + "' width='" + tw + "' height='20' rx='4' fill='#fff' stroke='" + (on ? "#C0611B" : "#cfd8d8") + "'/><text x='" + mxp + "' y='" + (myp + 4) + "' text-anchor='middle' font-size='14' fill='#1d2433'>" + lab + "</text>";
+        edges(k);
+      });
+    }
+    edges(S.tree);
+    (function nodes(nd) {
+      var x = nd.px + (SX - NW) / 2, y = PADT + nd.depth * SY, exp = expanded(nd), leaf = nd.leaf, m = majority(nd);
+      var pending = !exp && !leaf, fill = leaf ? (m === 1 ? "#d6ecec" : m === 0 ? "#f9e3d2" : "#ececec") : "#F4F7F7";
+      var stroke = leaf ? (m === 1 ? "#0F6E6E" : m === 0 ? "#C0611B" : "#888") : "#1F3864", on = pi.set[nd.path], sel = nd.path === S.sel;
+      var l1 = leaf ? "→ " + (m === 1 ? "SÌ" : m === 0 ? "NO" : "pari") : exp ? ATT[nd.split].n + "?" : "da dividere";
+      out += "<g class='nd' tabindex='0' role='button' data-p='" + nd.path + "' aria-label='nodo " + nodeLabel(nd) + ": " + nd.y + " sì, " + nd.no + " no, entropia " + f(nd.h, 2) + "'><title>" + nodeLabel(nd) + "</title>";
+      if (sel) out += "<rect x='" + (x - 5) + "' y='" + (y - 5) + "' width='" + (NW + 10) + "' height='" + (NH + 10) + "' rx='12' fill='none' stroke='#1F3864' stroke-width='2' stroke-dasharray='2 3'/>";
+      out += "<rect class='nb' x='" + x + "' y='" + y + "' width='" + NW + "' height='" + NH + "' rx='9' fill='" + fill + "' stroke='" + (on ? "#C0611B" : stroke) + "' stroke-width='" + (on ? 4 : 2) + "'" + (pending ? " stroke-dasharray='6 4'" : "") + "/>";
+      out += "<text x='" + (x + NW / 2) + "' y='" + (y + 22) + "' text-anchor='middle' font-size='15' font-weight='700' fill='" + (leaf ? stroke : "#1F3864") + "'>" + l1 + "</text>";
+      out += "<text x='" + (x + NW / 2) + "' y='" + (y + 42) + "' text-anchor='middle' font-size='14' fill='#1d2433'>" + nd.y + " sì · " + nd.no + " no</text>";
+      out += "<text x='" + (x + NW / 2) + "' y='" + (y + 60) + "' text-anchor='middle' font-size='14' fill='#566074'>H = " + f(nd.h, 2) + "</text></g>";
+      if (exp) nd.kids.forEach(nodes);
+    })(S.tree);
+    box.innerHTML = "<svg width='" + W + "' height='" + Hh + "' viewBox='0 0 " + W + " " + Hh + "' role='img' aria-label='Albero di decisione costruito finora'>" + out + "</svg>";
+  }
+  function treeCorrect() {
+    var ok = 0; S.rows.forEach(function (r) { var nd = S.tree; while (expanded(nd)) { var ch = nd.kids.filter(function (k) { return k.vi === r.a[nd.split]; })[0]; if (!ch) break; nd = ch; } var m = majority(nd); if (m === r.c || (m === -1 && r.c === 1)) ok++; });
+    return ok;
+  }
+  function renderStatus() {
+    var hgt = height(S.tree), b = $("aBuild");
+    var t = S.shown === 0 ? "Per ora c’è solo la radice: tutte le giornate nello stesso nodo." : "Fatti <b>" + S.shown + "</b> " + (S.shown === 1 ? "livello" : "livelli") + " di divisione su " + hgt + " possibili (profondità massima " + S.maxD + ").";
+    if (S.rows.length) t += " L’albero così com’è classifica bene <b>" + treeCorrect() + " giornate su " + S.rows.length + "</b>.";
+    $("aTreeSt").innerHTML = t;
+    b.textContent = S.shown === 0 ? "Costruisci l’albero ▶" : S.shown >= hgt ? "Albero completo ✓" : "Aggiungi un livello ▶";
+    b.disabled = S.shown >= hgt;
+  }
+  $("aTreeBox").addEventListener("click", function (e) { var g = e.target.closest("g.nd"); if (!g) return; S.sel = g.dataset.p; update(); });
+  $("aTreeBox").addEventListener("keydown", function (e) { if (e.key !== "Enter" && e.key !== " ") return; var g = e.target.closest("g.nd"); if (!g) return; e.preventDefault(); S.sel = g.dataset.p; update(); var p = document.querySelector("#aTreeBox g.nd[data-p='" + S.sel + "']"); if (p) p.focus(); });
+  $("aBuild").onclick = function () { if (S.shown < height(S.tree)) S.shown++; update(); };
+  $("aAll").onclick = function () { S.shown = height(S.tree); update(); };
+  $("aClear").onclick = function () { S.shown = 0; S.sel = ""; update(); };
+  $("aDepth").addEventListener("input", function () { S.maxD = +$("aDepth").value; $("aDepthV").textContent = S.maxD; rebuild(); update(); });
+
+  /* ---- prova un esempio ---- */
+  (function () {
+    var h = ""; ATT.forEach(function (a, ai) { h += "<label>" + a.n + " <select id='aEx" + ai + "'>" + a.v.map(function (v, vi) { return "<option value='" + vi + "'>" + v + "</option>"; }).join("") + "</select></label>"; });
+    $("aTryRow").innerHTML = h;
+    ATT.forEach(function (a, ai) { $("aEx" + ai).addEventListener("change", function () { S.ex[ai] = +this.value; update(); }); });
+  })();
+  function renderTry() {
+    ATT.forEach(function (a, ai) { $("aEx" + ai).value = S.ex[ai]; });
+    if (!S.rows.length) { $("aTryOut").textContent = ""; return; }
+    var p = pathSet(), nd = p.end, m = majority(nd), cls = m === 1 ? "SÌ, si può uscire" : m === 0 ? "NO, meglio restare a casa" : "pareggio: l’albero non sa decidere";
+    var txt = "Percorso: <b>" + (p.steps.length ? p.steps.join(" → ") : "radice") + "</b> → nodo con " + nd.y + " sì e " + nd.no + " no → previsione: <b style='color:" + (m === 1 ? "#0F6E6E" : "#C0611B") + "'>" + cls + "</b>.";
+    if (p.missing) txt += " (Nessuna giornata con «" + p.missing + "» in questo nodo: si usa la maggioranza.)";
+    else if (!nd.leaf) txt += " (L’albero non è ancora completo: ci si ferma qui e si vota a maggioranza. Premi «Aggiungi un livello».)";
+    $("aTryOut").innerHTML = txt;
+  }
+
+  function update() {
+    rebuild(); renderEnt(); renderGain(); renderTree(); renderStatus(); renderTry();
+    var nd = selNode(), setp = {}; (function w(n) { if (n === nd) { n.rows.forEach(function (r) { setp[S.rows.indexOf(r)] = 1; }); } n.kids.forEach(w); })(S.tree);
+    Array.prototype.forEach.call($("aBody").rows, function (tr, i) { tr.classList.toggle("insel", !!S.sel && !!setp[i]); tr.classList.toggle("out", !!S.sel && !setp[i]); });
+  }
+
+  /* ================================ PIANO ================================ */
+  var R = 4.5, PC = ["#1f77b4", "#ff7f0e"];
+  var P = { pts: [], tr: [], te: [], tree: null, accTr: [], accTe: [], cTr: [], cTe: [], D: 3, crit: "g", showTest: true };
+  var cvP = $("cvP"), ctxP = cvP.getContext("2d"), cvC = $("cvC"), ctxC = cvC.getContext("2d");
+  function fit(cv, ctx, aspect) { var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1, w = Math.max(160, Math.round(r.width)); cv._W = w; cv._H = aspect ? Math.round(r.height) : w; cv.width = Math.round(w * dpr); cv.height = Math.round(cv._H * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+  function wx(x) { return cvP._W / 2 + x * cvP._W / (2 * R); }
+  function wy(y) { return cvP._H / 2 - y * cvP._W / (2 * R); }
+  function genP() {
+    var set = $("pSet").value, r = rng(+$("pSeed").value * 131 + 11), pts = [], n = 200, flip = +$("pNoise").value / 100, i;
+    for (i = 0; i < n; i++) {
+      var c = i % 2, x, y;
+      if (set === "blobs") { x = (c ? 1.6 : -1.6) + gauss(r) * 0.7; y = (c ? 1.0 : -1.0) + gauss(r) * 0.7; }
+      else if (set === "over") { x = (c ? 0.9 : -0.9) + gauss(r) * 1.15; y = (c ? 0.6 : -0.6) + gauss(r) * 1.15; }
+      else if (set === "xor") { var q = r() < .5 ? 1 : -1; x = q * 1.6 + gauss(r) * 0.8; y = (c ? -q : q) * 1.6 + gauss(r) * 0.8; }
+      else { var t = r() * Math.PI; if (c) { x = 1 - Math.cos(t) * 2 - 0.5; y = -Math.sin(t) * 1.6 + 0.5; } else { x = Math.cos(t) * 2 - 0.5; y = Math.sin(t) * 1.6 - 0.5; } x += gauss(r) * 0.25; y += gauss(r) * 0.25; }
+      pts.push({ x: x, y: y, c: c });
+    }
+    pts.forEach(function (p) { if (r() < flip) p.c = 1 - p.c; });
+    var idx = pts.map(function (_, k) { return k; }); for (var i2 = idx.length - 1; i2 > 0; i2--) { var j = Math.floor(r() * (i2 + 1)), t2 = idx[i2]; idx[i2] = idx[j]; idx[j] = t2; }
+    P.pts = pts; P.tr = idx.slice(0, 140); P.te = idx.slice(140);
+    growAll();
+  }
+  function imp(n0, n1, crit) { var n = n0 + n1; if (!n) return 0; var p = n1 / n, q = 1 - p; return crit === "g" ? 1 - p * p - q * q : (p > 0 && q > 0 ? -(p * Math.log2(p) + q * Math.log2(q)) : 0); }
+  function grow(idx, depth, maxD, crit) {
+    var n1 = 0; idx.forEach(function (i) { n1 += P.pts[i].c; });
+    var n0 = idx.length - n1, nd = { n0: n0, n1: n1, depth: depth, leaf: true, imp: imp(n0, n1, crit) };
+    if (nd.imp === 0 || depth >= maxD || idx.length < 2) return nd;
+    var best = null, n = idx.length;
+    ["x", "y"].forEach(function (key, fi) {
+      var s = idx.slice().sort(function (a, b) { return P.pts[a][key] - P.pts[b][key]; }), l0 = 0, l1 = 0;
+      for (var k = 0; k < n - 1; k++) {
+        if (P.pts[s[k]].c) l1++; else l0++;
+        var v = P.pts[s[k]][key], w = P.pts[s[k + 1]][key]; if (v === w) continue;
+        var g = nd.imp - ((k + 1) / n * imp(l0, l1, crit) + (n - k - 1) / n * imp(n0 - l0, n1 - l1, crit));
+        if (!best || g > best.g + 1e-12) best = { key: key, fi: fi, thr: (v + w) / 2, g: g };
+      }
+    });
+    if (!best || best.g <= 1e-12) return nd;
+    nd.leaf = false; nd.key = best.key; nd.fi = best.fi; nd.thr = best.thr; nd.g = best.g;
+    nd.l = grow(idx.filter(function (i) { return P.pts[i][best.key] <= best.thr; }), depth + 1, maxD, crit);
+    nd.r = grow(idx.filter(function (i) { return P.pts[i][best.key] > best.thr; }), depth + 1, maxD, crit);
+    return nd;
+  }
+  function predP(nd, p, D) { while (!nd.leaf && nd.depth < D) nd = p[nd.key] <= nd.thr ? nd.l : nd.r; return nd.n1 > nd.n0 ? 1 : 0; }
+  function growAll() {
+    P.tree = grow(P.tr, 0, 10, P.crit); P.accTr = []; P.accTe = []; P.cTr = []; P.cTe = [];
+    for (var D = 1; D <= 10; D++) {
+      var a = 0, b = 0; P.tr.forEach(function (i) { if (predP(P.tree, P.pts[i], D) === P.pts[i].c) a++; }); P.te.forEach(function (i) { if (predP(P.tree, P.pts[i], D) === P.pts[i].c) b++; });
+      P.cTr.push(a); P.cTe.push(b); P.accTr.push(a / P.tr.length); P.accTe.push(b / P.te.length);
+    }
+  }
+  function leaves(nd, D, rect, out, lines) {
+    if (nd.leaf || nd.depth >= D) { out.push({ r: rect, c: nd.n1 > nd.n0 ? 1 : 0 }); return; }
+    if (nd.key === "x") { lines.push([nd.thr, rect.y0, nd.thr, rect.y1]); leaves(nd.l, D, { x0: rect.x0, x1: nd.thr, y0: rect.y0, y1: rect.y1 }, out, lines); leaves(nd.r, D, { x0: nd.thr, x1: rect.x1, y0: rect.y0, y1: rect.y1 }, out, lines); }
+    else { lines.push([rect.x0, nd.thr, rect.x1, nd.thr]); leaves(nd.l, D, { x0: rect.x0, x1: rect.x1, y0: rect.y0, y1: nd.thr }, out, lines); leaves(nd.r, D, { x0: rect.x0, x1: rect.x1, y0: nd.thr, y1: rect.y1 }, out, lines); }
+  }
+  function drawP() {
+    fit(cvP, ctxP, false); var ctx = ctxP, W = cvP._W, D = P.D;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, W);
+    ctx.font = "12px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "#6b7777";
+    for (var k = -4; k <= 4; k++) { ctx.strokeStyle = k === 0 ? "#9aa5a5" : "#e3e9e9"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(wx(k), 0); ctx.lineTo(wx(k), W); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, wy(k)); ctx.lineTo(W, wy(k)); ctx.stroke(); if (k) { ctx.fillText(k, wx(k), wy(0) + 14); ctx.fillText(k, wx(0) - 9, wy(k) + 4); } }
+    var out = [], lines = []; leaves(P.tree, D, { x0: -R, x1: R, y0: -R, y1: R }, out, lines);
+    out.forEach(function (o) { ctx.fillStyle = o.c ? "rgba(255,127,14,.26)" : "rgba(31,119,180,.26)"; ctx.fillRect(wx(o.r.x0), wy(o.r.y1), wx(o.r.x1) - wx(o.r.x0), wy(o.r.y0) - wy(o.r.y1)); });
+    ctx.strokeStyle = "rgba(29,36,51,.75)"; ctx.lineWidth = 1.5; lines.forEach(function (l) { ctx.beginPath(); ctx.moveTo(wx(l[0]), wy(l[1])); ctx.lineTo(wx(l[2]), wy(l[3])); ctx.stroke(); });
+    P.tr.forEach(function (i) { var p = P.pts[i]; ctx.beginPath(); ctx.arc(wx(p.x), wy(p.y), 5, 0, 6.2832); ctx.fillStyle = PC[p.c]; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); });
+    if (P.showTest) P.te.forEach(function (i) { var p = P.pts[i], x = wx(p.x), y = wy(p.y); ctx.fillStyle = PC[p.c]; ctx.fillRect(x - 5, y - 5, 10, 10); ctx.strokeStyle = "#1d2433"; ctx.lineWidth = 1.5; ctx.strokeRect(x - 5, y - 5, 10, 10); });
+    // grafico
+    fit(cvC, ctxC, true);
+    var c = ctxC, w = cvC._W, h = cvC._H, L = 40, B = 24, T = 10, Rr = 10, ymin = 0.4, ymax = 1;
+    c.fillStyle = "#fff"; c.fillRect(0, 0, w, h);
+    var px = function (i) { return L + (w - L - Rr) * i / 9; }, py = function (v) { return T + (h - T - B) * (1 - (v - ymin) / (ymax - ymin)); };
+    c.strokeStyle = "#e3e9e9"; c.fillStyle = "#566074"; c.font = "12px system-ui"; c.textAlign = "right";
+    for (var g = 0; g <= 3; g++) { var v = ymin + (ymax - ymin) * g / 3; c.beginPath(); c.moveTo(L, py(v)); c.lineTo(w - Rr, py(v)); c.stroke(); c.fillText(Math.round(v * 100) + "%", L - 4, py(v) + 4); }
+    c.textAlign = "center"; for (var i = 0; i < 10; i++) c.fillText(i + 1, px(i), h - 8);
+    [[P.accTr, "#2E7D32"], [P.accTe, "#C0611B"]].forEach(function (s) { c.strokeStyle = s[1]; c.lineWidth = 2.2; c.beginPath(); s[0].forEach(function (v, i) { if (i) c.lineTo(px(i), py(v)); else c.moveTo(px(i), py(v)); }); c.stroke(); s[0].forEach(function (v, i) { c.beginPath(); c.arc(px(i), py(v), 2.5, 0, 6.3); c.fillStyle = s[1]; c.fill(); }); c.beginPath(); c.arc(px(D - 1), py(s[0][D - 1]), 6, 0, 6.3); c.strokeStyle = "#1d2433"; c.lineWidth = 2; c.stroke(); });
+    var best = 0; P.accTe.forEach(function (v, i) { if (v > P.accTe[best] + 1e-12) best = i; });
+    var nl = out.length, a = P.accTr[D - 1], b = P.accTe[D - 1], root = P.tree;
+    var first = root.leaf ? "Con questi dati non esiste nessuna divisione utile." : "La <b>prima domanda</b> è «" + (root.fi ? "x₂" : "x₁") + " ≤ " + f(root.thr, 2) + "?» (" + (P.crit === "g" ? "indice di Gini" : "entropia") + " da " + f(root.imp, 3) + " a " + f(root.imp - root.g, 3) + " in media dopo la divisione).";
+    $("pOutT").innerHTML = first + "<br>Con <b>profondità " + D + "</b> l’albero ha <b>" + nl + " regioni</b>. Accuratezza sul <b>training</b>: <b>" + pc(a) + "</b> (" + P.cTr[D - 1] + " su " + P.tr.length + "); sul <b>test</b>: <b>" + pc(b) + "</b> (" + P.cTe[D - 1] + " su " + P.te.length + "). Differenza: <b class='hi'>" + f((a - b) * 100, 0) + " punti</b>.<br><span class='hint'>Sul test il valore più alto (" + pc(P.accTe[best]) + ") si ottiene a profondità " + (best + 1) + ".</span>";
+  }
+  cvP.setAttribute("aria-label", "Piano con punti di due classi e le regioni rettangolari di decisione dell’albero");
+  function readP() { P.D = +$("pDepth").value; P.crit = $("pCrit").value; P.showTest = $("pTest").checked; $("pDepthV").textContent = P.D; $("pSeedV").textContent = $("pSeed").value; $("pNoiseV").textContent = $("pNoise").value + "%"; }
+  ["pDepth", "pTest"].forEach(function (id) { $(id).addEventListener("input", function () { readP(); drawP(); }); $(id).addEventListener("change", function () { readP(); drawP(); }); });
+  ["pSet", "pSeed", "pNoise", "pCrit"].forEach(function (id) { $(id).addEventListener("input", function () { readP(); genP(); drawP(); }); $(id).addEventListener("change", function () { readP(); genP(); drawP(); }); });
+
+  /* ================================ tab ================================ */
+  function tab(w) { var t = w === "t"; $("pT").hidden = !t; $("pP").hidden = t; $("tbT").classList.toggle("on", t); $("tbP").classList.toggle("on", !t); if (t) update(); else drawP(); }
+  $("tbT").onclick = function () { tab("t"); }; $("tbP").onclick = function () { tab("p"); };
+  window.addEventListener("resize", function () { if (!$("pP").hidden) drawP(); });
+
+  /* ================================ esperienze ================================ */
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setc(id, on) { var e = $(id); e.checked = on; e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function tInit(o) { tab("t"); resetRows(); S.shown = o && o.shown || 0; S.sel = ""; S.maxD = o && o.d || 3; $("aDepth").value = S.maxD; $("aDepthV").textContent = S.maxD; S.ex = [0, 1, 0, 0]; gsel = 0; renderTable(); update(); if (o && o.g !== undefined) { gsel = o.g; renderGain(); } }
+  function pInit(o) { tab("p"); setv("pSet", o.set || "over"); setv("pSeed", o.seed || 4); setv("pNoise", o.noise || 0); setv("pCrit", o.crit || "g"); setc("pTest", true); setv("pDepth", o.d || 3); }
+  function flip(i) { S.rows[i].c = 1 - S.rows[i].c; renderTable(); update(); }
+  function gpick(ai) { gsel = ai; renderGain(); }
+  function sel() { return Array.prototype.slice.call(arguments); }
+  var EXPS = [
+    { id: "a1", title: "L’entropia misura la mescolanza", time: "5 min", desc: "Un nodo tutto uguale ha entropia 0, un nodo 50 e 50 ha entropia 1.", steps: [
+      { t: "Una tabella di esempi", x: "Ogni riga è una giornata: com’era il tempo e se siamo usciti a fare una passeggiata. In tutto <b>14 giornate</b>: in <b>9</b> siamo usciti (sì), in <b>5</b> no. Vogliamo imparare a decidere partendo da queste.", el: "#aTblP", apply: function () { tInit(); } },
+      { t: "Quanto è mescolato?", x: "La barra mostra la proporzione: <b>9 sì</b> e <b>5 no</b>. Più i due colori sono mescolati, più è difficile indovinare. L’<b>entropia</b> H misura questa mescolanza: il segno sul righello è a <b>0,94</b>, vicino al massimo.", el: ["#aEntBar", "#aMeter"] },
+      { t: "La formula con i numeri", x: "Con p = 9/14 per i sì e 5/14 per i no: H = −Σ p·log₂p = 0,4098 + 0,5305 = 0,9403. Ogni termine è positivo perché il logaritmo di un numero minore di 1 è negativo.", el: "#aEntF" },
+      { t: "Un nodo puro", x: "Metti <b>tutte le giornate a «sì»</b>: non c’è più niente da indovinare, la mescolanza è nulla e l’entropia vale <b>0</b>.", el: ["#aEnt", "#aAllY"], btn: "Tutte sì", apply: function () { $("aAllY").click(); } },
+      { t: "Il massimo disordine", x: "Ora <b>7 sì e 7 no</b> in alternanza: metà e metà, impossibile scommettere. L’entropia raggiunge il suo massimo, <b>H = 1</b>.", el: ["#aEnt", "#aHalf"], btn: "Metà e metà", apply: function () { $("aHalf").click(); } },
+      { t: "Una via di mezzo", x: "Ripristina i dati e cambia <b>la prima giornata</b> da no a sì: ora sono <b>10 sì e 4 no</b>, più sbilanciato di prima, e l’entropia scende a <b>0,863</b>. Meno mescolanza, meno entropia.", el: ["#aTblP", "#aEnt"], btn: "Cambia la riga 1", apply: function () { $("aReset").click(); flip(0); } }
+    ] },
+    { id: "a2", title: "Information gain: quale domanda per prima?", time: "6 min", desc: "Per ogni attributo si calcola di quanto cala l’entropia dividendo in base a quello.", steps: [
+      { t: "Quale domanda fare?", x: "Possiamo chiedere il <b>cielo</b>, la <b>temperatura</b>, l’<b>umidità</b> o il <b>vento</b>. La domanda migliore è quella che, dopo aver diviso le giornate in gruppi, lascia i gruppi <b>meno mescolati</b>. Qui si misura con il <b>guadagno di informazione</b>.", el: "#aGain", apply: function () { tInit(); } },
+      { t: "I quattro guadagni", x: "Il guadagno è l’entropia di prima (0,940) meno l’entropia media di dopo. Risultati: <b>cielo 0,247</b>, umidità 0,152, vento 0,048, temperatura 0,029. <b>Vince il cielo</b>, ed è la prima domanda dell’albero.", el: "#aGainList" },
+      { t: "Una domanda poco utile", x: "Clicca <b>temperatura</b>. Il gruppo «caldo» ha 4 giornate (2 sì, 2 no): tutto mescolato, H = 1. Anche gli altri gruppi restano mescolati, quindi l’entropia dopo è <b>0,9111</b> e il guadagno solo <b>0,029</b>.", el: "#aGainD", btn: "Mostra temperatura", apply: function () { gpick(1); } },
+      { t: "Una domanda molto utile", x: "Clicca <b>cielo</b>. Le giornate «nuvoloso» sono 4 e tutte sì: gruppo <b>puro</b>, H = 0. Le altre due sono 5 giornate ciascuna (2 sì e 3 no, oppure 3 sì e 2 no) con H = 0,9710. L’entropia dopo è la <b>media pesata</b>: 0,6935. Guadagno = 0,9403 − 0,6935 ≈ <b>0,247</b>.", el: "#aGainD", btn: "Mostra cielo", apply: function () { gpick(0); } },
+      { t: "Perché una media pesata?", x: "Ogni gruppo conta in proporzione a quante giornate contiene: 5/14, 4/14, 5/14. Un gruppo puro ma minuscolo non deve far credere che la domanda sia ottima.", el: "#aGainD" },
+      { t: "Se i dati cambiano, cambia la domanda", x: "Cambia in <b>no</b> le giornate 3 e 13 (nuvoloso e caldo). Ora il nodo ha 7 sì e 7 no, il guadagno del cielo crolla a <b>0,021</b> e <b>vince la temperatura</b> con 0,375.", el: ["#aTblP", "#aGainList"], btn: "Cambia le righe 3 e 13", apply: function () { $("aReset").click(); S.rows[2].c = 0; S.rows[12].c = 0; renderTable(); update(); gsel = 1; renderGain(); } }
+    ] },
+    { id: "a3", title: "Costruire l’albero e usarlo", time: "7 min", desc: "Livello per livello: dalla radice alle foglie, poi si prova un esempio nuovo.", steps: [
+      { t: "Si parte dalla radice", x: "In alto c’è un solo nodo con tutte le 14 giornate (9 sì, 5 no, H = 0,94). Premi il bottone per costruire l’albero un livello alla volta.", el: "#aTreeP", apply: function () { tInit(); } },
+      { t: "Prima domanda: il cielo", x: "L’algoritmo sceglie la domanda col guadagno più alto, <b>cielo</b>, e crea tre rami. «Nuvoloso» ha 4 sì e 0 no: <b>foglia pura</b>, risposta sì. Gli altri due rami sono ancora mescolati.", el: "#aTreeBox", btn: "Costruisci l’albero ▶", apply: function () { $("aBuild").click(); } },
+      { t: "Seconda domanda, in ogni ramo", x: "Si ripete lo stesso ragionamento in ciascun ramo, <b>solo con le sue giornate</b>. Se è sereno si chiede l’<b>umidità</b>, se piove si chiede il <b>vento</b>. Ora tutte le foglie sono pure (H = 0).", el: "#aTreeBox", btn: "Aggiungi un livello ▶", apply: function () { $("aBuild").click(); } },
+      { t: "Leggere l’albero", x: "L’albero è un elenco di domande: <b>sereno e umidità alta → no</b>, sereno e umidità normale → sì, nuvoloso → sì, pioggia e vento debole → sì, pioggia e vento forte → no. Classifica bene <b>14 giornate su 14</b>.", el: ["#aTreeBox", "#aTreeSt"] },
+      { t: "Prova un esempio nuovo", x: "Una giornata <b>sereno, caldo, umidità alta, vento forte</b>. Il cammino arancione percorre l’albero fino alla foglia: la previsione è <b>no</b>.", el: "#aTry", btn: "Imposta l’esempio", apply: function () { S.ex = [0, 0, 0, 1]; update(); } },
+      { t: "Un albero meno profondo", x: "Riduci la <b>profondità massima a 1</b>: dopo la prima domanda ci si ferma e le foglie restano mescolate (si vota a maggioranza). Ora l’albero classifica bene <b>10 giornate su 14</b>: più semplice, meno preciso.", el: ["#aDepth", "#aTreeSt"], btn: "Profondità 1", apply: function () { setv("aDepth", 1); S.shown = 1; update(); } },
+      { t: "Cambia un dato e ricostruisci", x: "Rimetti la profondità a 3 e cambia in <b>no</b> la giornata 3 (nuvoloso, caldo). Ora la prima domanda non è più il cielo: vince l’<b>umidità</b> (guadagno 0,258) e l’albero cambia forma. L’albero dipende dai dati!", el: ["#aTblP", "#aTreeBox"], btn: "Profondità 3 e riga 3", apply: function () { setv("aDepth", 3); S.shown = 2; flip(2); S.shown = height(S.tree); update(); } }
+    ] },
+    { id: "a4", title: "Profondità e overfitting sul piano", time: "7 min", desc: "Più domande fanno crescere l’accuratezza sul training, ma il test no.", steps: [
+      { t: "Punti sul piano", x: "Due nuvole di punti che si sovrappongono (blu e arancione). Ogni domanda dell’albero è una retta <b>verticale o orizzontale</b>. I cerchi sono i punti di <b>training</b> (70%), i quadrati sono i punti di <b>test</b> (30%), mai visti dall’albero.", el: "#cvP", apply: function () { pInit({ d: 1 }); } },
+      { t: "Una sola domanda", x: "Con profondità 1 il piano è diviso in <b>2 regioni</b>. Training <b>77%</b>, test <b>68%</b>: un modello semplice, che sbaglia molto ma non memorizza.", el: ["#pOut", "#cvP"] },
+      { t: "Più domande", x: "Porta la profondità a <b>4</b>: più regioni rettangolari. Il training sale a <b>91%</b> e anche il test sale, a <b>85%</b>: qui l’albero è al suo meglio.", el: ["#pParams", "#pOut"], btn: "Profondità 4", apply: function () { setv("pDepth", 4); } },
+      { t: "Troppe domande", x: "Porta la profondità a <b>10</b>: l’albero ritaglia piccoli rettangoli attorno a singoli punti. Il training arriva al <b>100%</b>, ma il test scende a <b>72%</b>: l’albero sta <b>memorizzando</b> il rumore (overfitting).", el: ["#cvP", "#pOut"], btn: "Profondità 10", apply: function () { setv("pDepth", 10); } },
+      { t: "Il grafico dell’overfitting", x: "La linea verde (training) sale sempre; la linea arancione (test) sale fino a <b>85%</b> a profondità 4 e poi scende. La profondità migliore è dove il <b>test</b> è più alto, non dove lo è il training.", el: "#pChartP" },
+      { t: "Etichette sbagliate", x: "Aggiungi il <b>15% di etichette sbagliate</b> (rumore). A profondità 10 il training arriva al <b>99%</b> perché l’albero impara anche gli errori, ma il test scende a <b>65%</b>; il test migliore (<b>77%</b>) si ha a profondità 3. Con più rumore serve un albero più basso.", el: ["#pData", "#pChartP"], btn: "Rumore 15%", apply: function () { setv("pNoise", 15); } },
+      { t: "Gini o entropia?", x: "Cambia il criterio da <b>Gini</b> a <b>entropia</b>: le due misure di mescolanza sono molto simili e danno risultati simili: qui training <b>96%</b>, test <b>65%</b>, a profondità 10.", el: "#pParams", btn: "Usa l’entropia", apply: function () { setv("pCrit", "e"); } }
+    ] }
+  ];
+  window.__alb = { S: S, P: P, tab: tab, update: update, pInit: pInit, tInit: tInit, EXPS: EXPS, height: height };
+  Tour.init(EXPS);
+  resetRows(); renderTable(); readP(); genP(); update();
+  window.addEventListener("load", function () { if (!$("pP").hidden) drawP(); });
+})();
+</script>
+</body>
+</html>
