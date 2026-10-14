@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dai segnali ai guasti</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+.tabs{flex-wrap:wrap;padding:12px 16px 0;max-width:1200px;margin:0 auto}
+.tabs button{font:inherit;font-size:.92rem;padding:8px 14px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;border-radius:8px 8px 0 0}
+.tabs button.on{background:var(--navy);color:#fff}
+.tabs button:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+.wide{max-width:1200px;margin:0 auto;padding:14px 16px}
+.dt{width:100%;border-collapse:separate;border-spacing:0;font-size:.9rem;font-variant-numeric:tabular-nums}
+.dt th,.dt td{padding:7px 9px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;white-space:nowrap;background:#fff}
+.dt td.l,.dt th.l{text-align:left}
+.dt tr td:first-child,.dt tr th:first-child{border-left:1px solid var(--line)}
+.dt thead th{background:var(--panel);cursor:pointer;vertical-align:top;border-top:1px solid var(--line);user-select:none}
+.dt thead th:hover{background:var(--soft)}
+.dt thead th:focus-visible{outline:3px solid #f2b266;outline-offset:-3px}
+.dt thead th .cn{display:block;color:var(--navy);font-weight:700}
+.dt thead th .ty{display:block;font-size:.72rem;color:var(--mute);font-weight:500}
+.dt thead th .rl{display:inline-block;margin-top:3px;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:1px 8px}
+.dt .r-feature .rl{background:#d8ecec;color:#0F6E6E}
+.dt .r-target .rl{background:#f7dcc6;color:#9a4a10}
+.dt .r-ignora .rl{background:#e4e7ea;color:#5c6670}
+.dt td.r-feature{background:#f1f9f9}
+.dt td.r-target{background:#fdf1e6}
+.dt td.r-ignora{background:#f3f4f5;color:#8a929b}
+.dt tbody tr{cursor:pointer}
+.dt tbody tr:hover td{filter:brightness(.97)}
+.dt tbody tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--orange)}
+.dt tbody tr.sel td{font-weight:600}
+.hl-row tbody tr.sel td{outline:2px solid var(--orange);outline-offset:-2px}
+.hl-feat td.r-feature,.hl-feat th.r-feature{outline:2px solid #0F6E6E;outline-offset:-2px}
+.hl-tgt td.r-target,.hl-tgt th.r-target{outline:2px solid var(--orange);outline-offset:-2px}
+.hl-all{outline:3px solid var(--navy);outline-offset:3px}
+.tw2{overflow-x:auto;border-radius:8px;padding:3px}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.terms .t{border:1px solid var(--line);border-left:5px solid var(--navy);border-radius:8px;padding:7px 10px;background:#fff;cursor:default;font-size:.88rem}
+.terms .t b{display:block;color:var(--navy)}
+.terms .t i{display:block;font-style:normal;color:var(--mute);font-size:.8rem}
+.terms .t.f{border-left-color:#0F6E6E}.terms .t.g{border-left-color:var(--orange)}.terms .t.r{border-left-color:#7a4fb5}
+.terms .t:hover,.terms .t:focus-visible{background:var(--soft);outline:none}
+.warn{background:#fff7ea;border:1px solid #efcfa8;border-radius:8px;padding:8px 12px;font-size:.9rem;color:#5b3a10;margin-top:8px}
+.warn.good{background:#e6f2e7;border-color:#b9d8bb;color:#1f5d24}
+.vec{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 9px;margin-top:6px;overflow-x:auto;white-space:nowrap}
+.flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media(max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}}
+.flow .col{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px}
+.flow h3{font-size:1rem;margin:0 0 8px}
+.flow .st{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.88rem}
+.flow .bx{border:2px solid var(--navy);border-radius:8px;padding:5px 9px;background:var(--soft);font-weight:600;color:var(--navy)}
+.flow .bx.o{border-color:var(--orange);background:#fdf1e6;color:#9a4a10}
+.flow .bx.g{border-color:#0F6E6E;background:#e4f2f2;color:#0F6E6E}
+.flow .ar{font-weight:800;color:var(--mute)}
+.flow .nt{font-size:.84rem;color:var(--mute);margin-top:8px}
+.cmp{width:100%;font-size:.88rem}
+.cmp th{white-space:normal}
+.cmp td:first-child{font-weight:700;color:var(--navy);white-space:nowrap}
+.cm{border-collapse:collapse;margin-top:6px;font-size:.88rem}
+.cm td,.cm th{border:1px solid var(--line);padding:4px 10px;text-align:center;background:#fff}
+.cm th{background:var(--panel)}
+.big{font-size:1.15rem;font-weight:700;color:var(--navy)}
+
+.warn.sim{margin:0 auto;max-width:1200px;border-radius:0;border-left:0;border-right:0;padding:8px 16px}
+.chk{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-size:.88rem;margin-top:6px}
+.chk .bar2{height:8px;background:#e4e7ea;border-radius:4px;overflow:hidden;min-width:60px}.chk .bar2 i{display:block;height:100%;background:var(--teal)}
+.cmx{border-collapse:separate;border-spacing:4px;margin-top:8px;font-size:.9rem}
+.cmx th{background:none;border:0;font-weight:600;color:var(--mute);font-size:.8rem;text-align:center;padding:2px 6px;text-transform:none;letter-spacing:0;white-space:normal}
+.cmx td{border-radius:8px;text-align:center;padding:10px 14px;min-width:96px;font-variant-numeric:tabular-nums;border:0}
+.cmx td b{display:block;font-size:1.5rem}.cmx td small{display:block;font-size:.72rem;color:#3b4350}
+.cmx .ok{background:#d8ecec}.cmx .er{background:#f7dcc6}
+.met{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:8px}
+.met div{background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:.84rem;color:var(--mute)}
+.met b{display:block;font-size:1.15rem;color:var(--navy)}
+pre.code{background:#12284f;color:#e8eef8;border-radius:8px;padding:12px 14px;overflow-x:auto;font-size:.84rem;line-height:1.5;margin:6px 0 0}
+pre.code i{color:#9db3d6;font-style:normal}
+.ft td,.ft th{font-size:.84rem;padding:5px 8px;text-transform:none;letter-spacing:0}
+.ft tbody tr{cursor:pointer}.ft tbody tr:hover td{background:var(--soft)}
+.sep{display:inline-block;height:8px;background:var(--orange);border-radius:4px;vertical-align:middle}
+.eqn{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:1.05rem;color:var(--navy);background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 10px;margin-top:6px;text-align:center;overflow-x:auto}
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;font-size:.88rem}
+@media(max-width:560px){.pgrid{grid-template-columns:minmax(0,1fr)}.tabs button{font-size:.8rem;padding:7px 9px}}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Dai segnali ai guasti: la pipeline completa</h1><p>un esempio completo di classificazione: dal segnale di un accelerometro alla matrice di confusione</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="warn sim"><b>Dati simulati.</b> I segnali di questa pagina sono generati dal computer per imitare la logica di un caso reale (accelerometro su un motore sano o con un cuscinetto danneggiato; tesi di G. Fagiani, Università di Perugia, a.a. 2017/18, relatore A. Ficola). Sono veri il procedimento e le sue idee; i numeri e i grafici di qui sono didattici. I risultati della tesi sono nella scheda 6.</div>
+<div class="tabs" role="tablist" aria-label="Passi della pipeline">
+  <button id="tb1" class="on" role="tab" data-tab="1">1 · Il segnale</button>
+  <button id="tb2" role="tab" data-tab="2">2 · Le feature</button>
+  <button id="tb3" role="tab" data-tab="3">3 · Correlazione e selezione</button>
+  <button id="tb4" role="tab" data-tab="4">4 · Training, test e scala</button>
+  <button id="tb5" role="tab" data-tab="5">5 · Il modello</button>
+  <button id="tb6" role="tab" data-tab="6">6 · La matrice di confusione</button>
+</div>
+
+<!-- ============ 1 · SEGNALE ============ -->
+<main class="app" id="p1">
+  <section>
+    <canvas id="cv1a" width="640" height="250" aria-label="Segnale di vibrazione nel tempo"></canvas>
+    <canvas id="cv1b" width="640" height="250" aria-label="Spettro del segnale" style="margin-top:10px"></canvas>
+    <p class="hint" id="h1"></p>
+  </section>
+  <section>
+    <div class="panel" id="opt1"><h2>La registrazione</h2>
+      <div class="row"><label><input type="radio" name="st1" value="0" checked> <b>Motore sano</b></label></div>
+      <div class="row"><label><input type="radio" name="st1" value="1"> <b>Motore con cuscinetto danneggiato</b></label></div>
+      <div class="row"><button id="b1n" class="pri">Nuova registrazione</button><label><input type="checkbox" id="z1"> ingrandisci (0,12 s)</label></div>
+    </div>
+    <div class="panel read" id="o1" aria-live="polite"><h2>Che cosa si vede</h2><div id="o1t"></div></div>
+  </section>
+</main>
+
+<!-- ============ 2 · FEATURE ============ -->
+<main class="app" id="p2" hidden>
+  <section>
+    <canvas id="cv2" width="640" height="470" aria-label="200 registrazioni nel piano di due feature"></canvas>
+    <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:.9rem"><label>Asse x <select id="fx"></select></label><label>Asse y <select id="fy"></select></label></div>
+    <p class="hint"><span class="sw" style="background:#0F6E6E"></span>sano &nbsp; <span class="sw" style="background:#C0611B"></span>guasto &nbsp; Ogni punto è <b>una registrazione</b> ridotta a due numeri (200 registrazioni, 100 per classe).</p>
+  </section>
+  <section>
+    <div class="panel read"><h2>Da 1024 numeri a 8</h2>
+      <p>Una registrazione sono <b>1024 numeri</b> (campioni in mezzo secondo): troppi e poco significativi. Si calcolano allora poche <b>feature</b> che riassumono la forma del segnale nel <b>tempo</b> (media, deviazione standard, RMS, asimmetria, curtosi, fattore di cresta) e nelle <b>frequenze</b> (picchi dello spettro, energia oltre 400 Hz).</p>
+    </div>
+    <div class="panel" id="ftP"><h2>Quanto separano le due classi?</h2>
+      <div class="tw"><table class="ft" id="ft"><thead><tr><th class="l">Feature</th><th>sano</th><th>guasto</th><th>separazione</th><th>scheda 1</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint">Separazione = distanza tra le medie divisa per la dispersione tipica. Clicca una riga per metterla sull’asse x. «Scheda 1» = i valori della registrazione della scheda 1.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 3 · CORRELAZIONE ============ -->
+<main class="app" id="p3" hidden>
+  <section>
+    <canvas id="cv3" width="640" height="600" aria-label="Matrice di correlazione tra le feature"></canvas>
+    <p class="hint">Verde acqua = correlazione positiva, arancione = negativa; più è intensa, più è vicina a ±1. L’ultima riga/colonna è l’etichetta (0 = sano, 1 = guasto). Calcolata sul <b>solo training</b>. Riquadro rosso = coppia ridondante.</p>
+  </section>
+  <section>
+    <div class="panel" id="side3"><h2>Quali feature tenere?</h2>
+      <div class="row"><label for="rth">Soglia di ridondanza |r| ></label><input type="range" id="rth" min="0.5" max="0.99" step="0.01" value="0.9"><output id="rthv">0,90</output></div>
+      <div class="row"><button id="b3a" class="pri">Elimina le ridondanti</button><button id="b3b">Riattiva tutte</button></div>
+      <div class="chk" id="chk"></div>
+      <p class="hint">Barra = quanto la feature è correlata con l’etichetta (|r|). Puoi anche togliere o rimettere le feature a mano.</p>
+    </div>
+    <div class="panel read" id="o3" aria-live="polite"><h2>Che cosa ne ricaviamo</h2><div id="o3t"></div></div>
+  </section>
+</main>
+
+<!-- ============ 4 · TRAINING E TEST ============ -->
+<main class="app" id="p4" hidden>
+  <section>
+    <canvas id="cv4" width="640" height="300" aria-label="200 registrazioni divise in training e test"></canvas>
+    <p class="hint"><span class="sw" style="background:#0F6E6E"></span>sano &nbsp; <span class="sw" style="background:#C0611B"></span>guasto &nbsp; Pallino pieno = training; <b>cerchio vuoto = test</b> (mai visto durante l’allenamento).</p>
+    <div class="panel" style="margin-top:10px"><h2>Standardizzazione: media e deviazione standard</h2>
+      <div class="tw"><table class="ft" id="sct"></table></div>
+      <div class="eqn">z = (x − μ) / σ</div>
+    </div>
+  </section>
+  <section>
+    <div class="panel" id="opt4"><h2>Come dividiamo i dati</h2>
+      <div class="row"><label for="tf">Quota di test</label><input type="range" id="tf" min="10" max="40" step="5" value="20"><output id="tfv">20 %</output></div>
+      <div class="row"><button id="b4r">Rimescola</button><span class="hint" id="sp4"></span></div>
+      <div class="row"><label><input type="checkbox" id="lk"> calcola μ e σ su <b>tutti</b> i dati</label></div>
+    </div>
+    <div class="panel read" id="o4" aria-live="polite"><h2>Che cosa succede</h2><div id="o4t"></div></div>
+  </section>
+</main>
+
+<!-- ============ 5 · MODELLO ============ -->
+<main class="app" id="p5" hidden>
+  <section>
+    <canvas id="cv5a" width="640" height="240" aria-label="Costo durante l'allenamento"></canvas>
+    <canvas id="cv5b" width="640" height="200" aria-label="Probabilità previste per le registrazioni di test" style="margin-top:10px"></canvas>
+    <p class="hint" id="h5"></p>
+  </section>
+  <section>
+    <div class="panel" id="opt5"><h2>Allenare la regressione logistica</h2>
+      <div class="eqn">p = 1 / (1 + e<sup>−(w·z + b)</sup>)</div>
+      <div class="row"><label for="it">Iterazioni</label><input type="range" id="it" min="0" max="300" step="1" value="300"><output id="itv">300</output></div>
+      <div class="row"><button id="b5p" class="pri">▶ Allena dall’inizio</button><button id="b5e">Allenamento completo</button></div>
+    </div>
+    <div class="panel read" id="o5" aria-live="polite"><h2>Che cosa ha imparato</h2><div id="o5t"></div></div>
+  </section>
+</main>
+
+<!-- ============ 6 · MATRICE ============ -->
+<main class="app" id="p6" hidden>
+  <section>
+    <canvas id="cv6" width="640" height="330" aria-label="Probabilità previste, soglia e errori"></canvas>
+    <p class="hint"><span class="sw" style="background:#0F6E6E"></span>sano vero &nbsp; <span class="sw" style="background:#C0611B"></span>guasto vero &nbsp; ◯ rosso = previsione sbagliata. Linea nera = soglia di decisione.</p>
+    <div class="panel read" id="cmP" style="margin-top:10px" aria-live="polite"><h2>Matrice di confusione (test)</h2><div id="cmT"></div></div>
+  </section>
+  <section>
+    <div class="panel" id="opt6"><h2>Soglia e ambiente</h2>
+      <div class="row"><label for="th">Soglia: «guasto» se p ≥</label><input type="range" id="th" min="0.05" max="0.95" step="0.05" value="0.5"><output id="thv">0,50</output></div>
+      <div class="row"><label for="nz">Rumore dell’ambiente nel test</label><input type="range" id="nz" min="1" max="1.6" step="0.05" value="1"><output id="nzv">×1,00</output></div>
+      <p class="hint">Il modello è stato allenato a rumore ×1,00. Alzando il rumore, il test avviene in un ambiente <b>diverso</b> da quello di training.</p>
+    </div>
+    <div class="panel read" id="o6" aria-live="polite"><h2>Lettura</h2><div id="o6t"></div></div>
+  </section>
+  <section style="grid-column:1/-1">
+    <div class="cols2">
+      <div class="panel" id="thesis"><h2>E nel caso reale?</h2>
+        <p style="margin:0 0 6px;font-size:.92rem">Risultati <b>reali</b> della tesi (motore vero, tre prove con modelli diversi):</p>
+        <div class="tw"><table class="ft"><thead><tr><th class="l">Prova</th><th class="l">Accuratezza</th></tr></thead><tbody>
+          <tr><td class="l">1 · stesso motore e stesso ambiente</td><td class="l">99–100 %</td></tr>
+          <tr><td class="l">2 · ambiente rumoroso, 59 feature</td><td class="l">circa 40–50 %</td></tr>
+          <tr><td class="l">2 · ambiente rumoroso, feature selezionate</td><td class="l">73–88 %</td></tr>
+          <tr><td class="l">2 · solo 3 componenti principali</td><td class="l">22–27 %</td></tr>
+          <tr><td class="l">3 · motore diverso</td><td class="l">circa 60 %</td></tr></tbody></table></div>
+        <p class="hint">Come nella simulazione: un test «facile» dà quasi 100 %; cambiando ambiente, <b>le feature contano più dell’algoritmo</b>, e i modelli semplici (lineari) sono stati i più robusti.</p>
+      </div>
+      <div class="panel"><h2>Lo stesso procedimento in Python</h2>
+<pre class="code"><i># 1-2. X: le feature (n × p), y: 0 = sano, 1 = guasto</i>
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (confusion_matrix,
+                             classification_report)
+
+X_tr, X_te, y_tr, y_te = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42)
+
+modello = make_pipeline(StandardScaler(), LogisticRegression())
+modello.fit(X_tr, y_tr)        <i># μ, σ e pesi: solo dal training</i>
+
+y_pred = modello.predict(X_te)
+print(confusion_matrix(y_te, y_pred))
+print(classification_report(y_te, y_pred,
+      target_names=["sano", "guasto"]))</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="sf"><div class="wrap">Matematica, Dati e Intelligenza Artificiale · Prof. Michele Crispoltoni</div></footer>
+<script src="../assets/tour.js"></script>
+<script>
+/* ---- simulazione didattica dei segnali (non sono dati reali) ---- */
+var FS = 2048, NS = 1024;
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { var u = 0; while (!u) u = r(); var v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function gen(label, seed, nm) {
+  var r = mulberry(seed), x = new Float64Array(NS), i, k;
+  var amp = 0.8 + 0.4 * r(), ph = 2 * Math.PI * r(), f0 = 24 + 2 * r(), sig = 0.3 * nm * (0.85 + 0.3 * r());
+  for (i = 0; i < NS; i++) { var t = i / FS; x[i] = amp * (Math.sin(2 * Math.PI * f0 * t + ph) + 0.5 * Math.sin(4 * Math.PI * f0 * t + 2 * ph + 1) + 0.25 * Math.sin(6 * Math.PI * f0 * t)) + sig * gauss(r); }
+  if (label === 1) {
+    var base = x.slice(), sev = SEV_MIN + SEV_RNG * r(), per = FS / (85 + 6 * r()), pos = r() * per;
+    while (pos < NS) { var a = sev * (0.7 + 0.6 * r()), s0 = Math.floor(pos);
+      for (k = 0; k < 24 && s0 + k < NS; k++) x[s0 + k] += a * Math.exp(-k / 3) * Math.sin(2 * Math.PI * 600 * k / FS);
+      pos += per * (1 + 0.04 * (r() - 0.5)); }
+    var dm = 0; for (i = 0; i < NS; i++) dm += x[i] - base[i]; dm /= NS; for (i = 0; i < NS; i++) x[i] -= dm;
+  }
+  return x;
+}
+var SEV_MIN = 0.7, SEV_RNG = 2.3;
+function fft(re, im) { var n = re.length, i, j = 0, k, t;
+  for (i = 1; i < n; i++) { var b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (var len = 2; len <= n; len <<= 1) { var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (i = 0; i < n; i += len) { var cr = 1, ci = 0; for (k = 0; k < len / 2; k++) { var ur = re[i + k], ui = im[i + k], vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr; re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi; var nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr; } } } }
+function spectrum(x) { var n = x.length, re = new Float64Array(n), im = new Float64Array(n), i, m = new Float64Array(n / 2);
+  for (i = 0; i < n; i++) re[i] = x[i] * (0.5 - 0.5 * Math.cos(2 * Math.PI * i / n)) * 2; fft(re, im);
+  for (i = 0; i < n / 2; i++) m[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]) * 2 / n; return m; }
+var THR = 0.05;
+var FN = ["Media", "Dev. standard", "RMS", "Asimmetria", "Curtosi", "Fattore di cresta", "Picchi spettrali", "Energia > 400 Hz"];
+function feats(x) { var n = x.length, i, mu = 0, s2 = 0, s3 = 0, s4 = 0, pk = 0, d;
+  for (i = 0; i < n; i++) mu += x[i]; mu /= n;
+  var ms = 0; for (i = 0; i < n; i++) { d = x[i] - mu; s2 += d * d; s3 += d * d * d; s4 += d * d * d * d; ms += x[i] * x[i]; if (Math.abs(x[i]) > pk) pk = Math.abs(x[i]); }
+  var sd = Math.sqrt(s2 / n), rms = Math.sqrt(ms / n), m = spectrum(x), np = 0, eh = 0, et = 0;
+  for (i = 1; i < m.length; i++) { if (m[i] > THR) np++; var e = m[i] * m[i]; et += e; if (i * FS / n > 400) eh += e; }
+  return [mu, sd, rms, s3 / n / (sd * sd * sd), s4 / n / (s2 / n * s2 / n), pk / rms, np, eh / et * 100]; }
+function calib() { var a = [], i, j; for (i = 0; i < 20; i++) { var m = spectrum(gen(0, 9000 + i, 1)), mu = 0, v = 0; for (j = 1; j < m.length; j++) mu += m[j]; mu /= m.length - 1; for (j = 1; j < m.length; j++) v += (m[j] - mu) * (m[j] - mu); a.push(mu + 2 * Math.sqrt(v / (m.length - 1))); } var s = 0; for (i = 0; i < a.length; i++) s += a[i]; return s / a.length; }
+
+function shuffle(a, seed) { var r = mulberry(seed), i, j, t; a = a.slice(); for (i = a.length - 1; i > 0; i--) { j = Math.floor(r() * (i + 1)); t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function split(Y, frac, seed) { var tr = [], te = [], c; for (c = 0; c < 2; c++) { var idx = []; for (var i = 0; i < Y.length; i++) if (Y[i] === c) idx.push(i); idx = shuffle(idx, seed + c); var nt = Math.round(idx.length * frac); te = te.concat(idx.slice(0, nt)); tr = tr.concat(idx.slice(nt)); } return { tr: tr.sort(function (a, b) { return a - b; }), te: te.sort(function (a, b) { return a - b; }) }; }
+function scaler(X, idx, cols) { return cols.map(function (j) { var m = 0, v = 0, i; for (i = 0; i < idx.length; i++) m += X[idx[i]][j]; m /= idx.length; for (i = 0; i < idx.length; i++) v += Math.pow(X[idx[i]][j] - m, 2); return { m: m, s: Math.sqrt(v / idx.length) || 1 }; }); }
+function zrow(row, cols, sc) { return cols.map(function (j, k) { return (row[j] - sc[k].m) / sc[k].s; }); }
+function sigm(z) { return 1 / (1 + Math.exp(-z)); }
+/* discesa del gradiente; restituisce la traiettoria (pesi, costo ogni "step" iterazioni) */
+function trainLR(Z, y, iters, lr, lam) { var p = Z[0].length, n = Z.length, w = new Array(p).fill(0), b = 0, path = [], it, i, j;
+  for (it = 0; it <= iters; it++) { var gw = new Array(p).fill(0), gb = 0, L = 0;
+    for (i = 0; i < n; i++) { var z = b; for (j = 0; j < p; j++) z += w[j] * Z[i][j]; var q = sigm(z), e = q - y[i]; gb += e; for (j = 0; j < p; j++) gw[j] += e * Z[i][j]; L += -(y[i] ? Math.log(q + 1e-12) : Math.log(1 - q + 1e-12)); }
+    path.push({ w: w.slice(), b: b, L: L / n });
+    for (j = 0; j < p; j++) w[j] -= lr * (gw[j] / n + lam * w[j]); b -= lr * gb / n; }
+  return path; }
+function predP(m, z) { var s = m.b; for (var j = 0; j < z.length; j++) s += m.w[j] * z[j]; return sigm(s); }
+function conf(P, Y, th) { var tp = 0, fp = 0, tn = 0, fn = 0; for (var i = 0; i < P.length; i++) { var pr = P[i] >= th ? 1 : 0; if (Y[i] === 1) { if (pr) tp++; else fn++; } else { if (pr) fp++; else tn++; } } return { tp: tp, fp: fp, tn: tn, fn: fn }; }
+
+</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var TEAL = "#0F6E6E", ORA = "#C0611B", NAVY = "#1F3864", RED = "#B3261E";
+  function f1(x) { return x.toFixed(1).replace(".", ","); }
+  function f2(x) { return x.toFixed(2).replace(".", ","); }
+  function f3(x) { var s = x.toFixed(3).replace(".", ","); return /^-0,0+$/.test(s) ? s.slice(1) : s; }
+  function pc(x) { return (x * 100).toFixed(1).replace(".", ",") + " %"; }
+  function pc0(x) { return Math.round(x * 100) + " %"; }
+  var SHORT = ["Media", "Dev.st.", "RMS", "Asimm.", "Curtosi", "Cresta", "Picchi", "En.>400"];
+
+  /* ---------- dati simulati ---------- */
+  THR = calib();
+  var NR = 200, X = [], Y = [], SD = [], i;
+  for (i = 0; i < NR; i++) { Y.push(i % 2); SD.push(1000 + i); X.push(feats(gen(i % 2, 1000 + i, 1))); }
+  var NF = X[0].length;
+  var fcache = { "1": X };
+  function featAt(k) { var key = k.toFixed(2); if (!fcache[key]) { var m = []; for (var q = 0; q < NR; q++) m.push(feats(gen(Y[q], SD[q], k))); fcache[key] = m; } return fcache[key]; }
+
+  /* ---------- stato ---------- */
+  var S = { sel: [], seed: 42, tf: 0.2, leak: false, it: 300, th: 0.5, nz: 1, sp: null, M: null, cur: { label: 0, seed: 777001, zoom: false } };
+  for (i = 0; i < NF; i++) S.sel.push(true);
+  function cols() { var c = []; for (var j = 0; j < NF; j++) if (S.sel[j]) c.push(j); return c; }
+
+  function fit(leak, selCols) {
+    var cs = selCols || cols(); if (!cs.length) return null;
+    var sp = S.sp, scIdx = leak ? X.map(function (_, q) { return q; }) : sp.tr, sc = scaler(X, scIdx, cs);
+    var Ztr = sp.tr.map(function (q) { return zrow(X[q], cs, sc); }), ytr = sp.tr.map(function (q) { return Y[q]; });
+    var path = trainLR(Ztr, ytr, 300, 0.5, 0.001);
+    return { cs: cs, sc: sc, path: path, Ztr: Ztr, ytr: ytr };
+  }
+  function probs(M, idx, k, it) {
+    var F = featAt(k), m = M.path[Math.min(it, M.path.length - 1)];
+    return idx.map(function (q) { return predP(m, zrow(F[q], M.cs, M.sc)); });
+  }
+  function accOf(M, idx, k, th, it) { var P = probs(M, idx, k, it === undefined ? 300 : it), c = conf(P, idx.map(function (q) { return Y[q]; }), th); return (c.tp + c.tn) / idx.length; }
+  function refit() { S.sp = split(Y, S.tf, S.seed); S.M = fit(S.leak); }
+  refit();
+
+  /* ---------- grafica ---------- */
+  function ticks(lo, hi, n) { var st = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log(st) / Math.LN10)), m = st / p; st = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; var a = Math.ceil(lo / st - 1e-9) * st, r = []; for (; a <= hi + 1e-9; a += st) r.push(Math.round(a / st) * st); return r; }
+  function nf(v) { return (Math.abs(v) < 1e-9 ? 0 : v).toString().replace(".", ","); }
+  function g2s(x) { var s = f2(x); return s === "-0,00" ? "0,00" : s; }
+  function frame(id, L, R, T, B) { var cv = $(id), c = cv.getContext("2d"), W = cv.width, H = cv.height; c.clearRect(0, 0, W, H); c.fillStyle = "#fff"; c.fillRect(0, 0, W, H); return { c: c, W: W, H: H, L: L, R: R, T: T, B: B }; }
+  function axes(g, x0, x1, y0, y1, xl, yl, ex) {
+    var c = g.c; g.x0 = x0; g.x1 = x1; g.y0 = y0; g.y1 = y1;
+    g.X = function (v) { return g.L + (v - x0) / (x1 - x0) * (g.W - g.L - g.R); }; g.Y = function (v) { return g.H - g.B - (v - y0) / (y1 - y0) * (g.H - g.B - g.T); };
+    c.font = "12px system-ui,sans-serif"; c.fillStyle = "#566074"; c.strokeStyle = "#e1e7e7"; c.lineWidth = 1;
+    ticks(x0, x1, 6).forEach(function (v) { var x = g.X(v); c.beginPath(); c.moveTo(x, g.T); c.lineTo(x, g.H - g.B); c.stroke(); c.textAlign = "center"; c.fillText(nf(+v.toFixed(6)), x, g.H - g.B + 15); });
+    ticks(y0, y1, 5).forEach(function (v) { var y = g.Y(v); c.beginPath(); c.moveTo(g.L, y); c.lineTo(g.W - g.R, y); c.stroke(); c.textAlign = "right"; c.fillText(nf(+v.toFixed(6)), g.L - 5, y + 4); });
+    c.strokeStyle = "#8a929b"; c.beginPath(); c.moveTo(g.L, g.T); c.lineTo(g.L, g.H - g.B); c.lineTo(g.W - g.R, g.H - g.B); c.stroke();
+    c.fillStyle = "#1d2433"; c.textAlign = "center"; c.font = "13px system-ui,sans-serif"; c.fillText(xl, g.L + (g.W - g.L - g.R) / 2, g.H - 5);
+    c.save(); c.translate(13, g.T + (g.H - g.T - g.B) / 2); c.rotate(-Math.PI / 2); c.fillText(yl, 0, 0); c.restore();
+  }
+  function dot(c, x, y, col, r, hollow) { c.beginPath(); c.arc(x, y, r, 0, 7); if (hollow) { c.lineWidth = 2; c.strokeStyle = col; c.fillStyle = "#fff"; c.fill(); c.stroke(); } else { c.fillStyle = col; c.globalAlpha = 0.85; c.fill(); c.globalAlpha = 1; c.lineWidth = 1; c.strokeStyle = "#fff"; c.stroke(); } }
+  function mean(a) { var s = 0; for (var q = 0; q < a.length; q++) s += a[q]; return s / a.length; }
+  function sdv(a) { var m = mean(a), s = 0; for (var q = 0; q < a.length; q++) s += (a[q] - m) * (a[q] - m); return Math.sqrt(s / a.length); }
+  function colOf(j, lab) { var a = []; for (var q = 0; q < NR; q++) if (Y[q] === lab) a.push(X[q][j]); return a; }
+  var SEPD = []; for (var j0 = 0; j0 < NF; j0++) { var a0 = colOf(j0, 0), a1 = colOf(j0, 1); SEPD.push(Math.abs(mean(a0) - mean(a1)) / Math.sqrt((Math.pow(sdv(a0), 2) + Math.pow(sdv(a1), 2)) / 2)); }
+
+  /* ---------- schede ---------- */
+  var cur = 1;
+  function tab(n) {
+    cur = n;
+    for (var q = 1; q <= 6; q++) { $("p" + q).hidden = (q !== n); $("tb" + q).className = (q === n ? "on" : ""); $("tb" + q).setAttribute("aria-selected", q === n); }
+    redraw();
+  }
+  function redraw() { [0, d1, d2, d3, d4, d5, d6][cur](); }
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function (b) { b.onclick = function () { tab(+b.getAttribute("data-tab")); }; });
+
+  /* ---------- 1 · segnale ---------- */
+  function d1() {
+    var C = S.cur, x = gen(C.label, C.seed, 1), n = C.zoom ? Math.round(0.12 * FS) : NS, g = frame("cv1a", 48, 12, 14, 38);
+    axes(g, 0, n / FS, -5, 5, "tempo (s)", "accelerazione", 0);
+    var c = g.c; c.strokeStyle = C.label ? ORA : TEAL; c.lineWidth = C.zoom ? 1.8 : 1.1; c.beginPath();
+    for (var q = 0; q < n; q++) { var px = g.X(q / FS), py = g.Y(x[q]); if (q) c.lineTo(px, py); else c.moveTo(px, py); } c.stroke();
+    var m = spectrum(x), g2 = frame("cv1b", 48, 12, 14, 38); axes(g2, 0, 1024, 0, 0.5, "frequenza (Hz)", "ampiezza", 0); c = g2.c;
+    c.fillStyle = "rgba(192,97,27,.08)"; c.fillRect(g2.X(400), g2.T, g2.X(1024) - g2.X(400), g2.H - g2.B - g2.T); c.fillStyle = "#9a4a10"; c.font = "11px system-ui,sans-serif"; c.textAlign = "left"; c.fillText("oltre 400 Hz", g2.X(405), g2.T + 12);
+    c.strokeStyle = C.label ? ORA : TEAL; c.lineWidth = 1.3; c.beginPath();
+    for (q = 1; q < m.length; q++) { var yy = Math.min(m[q], 0.5), xx = g2.X(q * FS / NS); if (q > 1) c.lineTo(xx, g2.Y(yy)); else c.moveTo(xx, g2.Y(yy)); } c.stroke();
+    c.setLineDash([5, 4]); c.strokeStyle = "#1d2433"; c.beginPath(); c.moveTo(g2.L, g2.Y(THR)); c.lineTo(g2.W - g2.R, g2.Y(THR)); c.stroke(); c.setLineDash([]);
+    c.fillStyle = "#1d2433"; c.font = "11px system-ui,sans-serif"; c.textAlign = "right"; c.fillText("soglia dei picchi", g2.W - g2.R - 4, g2.Y(THR) - 4);
+    var F = feats(x); S.cur.F = F;
+    var t = C.label ?
+      "<p>Il cuscinetto danneggiato produce piccoli <b>urti ripetuti</b> (circa 85 al secondo): nel grafico in alto sono gli scatti che si ripetono sopra l’onda regolare. Ingrandisci per vederli bene.</p><p>Nello <b>spettro</b> gli urti fanno comparire energia anche <b>oltre i 400 Hz</b> (qui, attorno ai 600 Hz).</p>" :
+      "<p>Un motore sano vibra in modo <b>regolare</b>: un’onda periodica (la rotazione, a circa 25 giri al secondo e le sue armoniche) più un po’ di <b>rumore</b> casuale.</p><p>Nello <b>spettro</b> si vedono pochi picchi in basso (sotto i 100 Hz) e quasi niente oltre i 400 Hz.</p>";
+    t += "<p class='hint'>Una registrazione = <b>" + NS + " numeri</b> (campioni a " + FS + " al secondo, per mezzo secondo): è un vettore di " + NS + " componenti. Difficile darlo così a un modello: prima si calcolano le <b>feature</b>.</p>";
+    $("o1t").innerHTML = t;
+    $("h1").innerHTML = "Sopra: il segnale nel <b>tempo</b>. Sotto: il suo <b>spettro</b> (le frequenze che lo compongono). Le componenti molto forti sotto i 100 Hz escono dal grafico.";
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=st1]"), function (r) { r.onchange = function () { S.cur.label = +r.value; d1(); }; });
+  $("b1n").onclick = function () { S.cur.seed += 17; d1(); };
+  $("z1").onchange = function () { S.cur.zoom = this.checked; d1(); };
+
+  /* ---------- 2 · feature ---------- */
+  var fx = $("fx"), fy = $("fy"), flip = 0;
+  FN.forEach(function (n, q) { fx.add(new Option(n, q)); fy.add(new Option(n, q)); }); fx.value = 4; fy.value = 7;
+  function d2() {
+    var a = +fx.value, b = +fy.value, g = frame("cv2", 52, 14, 14, 42), q, lo = [], hi = [];
+    [a, b].forEach(function (j, k) { var v = X.map(function (r) { return r[j]; }), mn = Math.min.apply(null, v), mx = Math.max.apply(null, v), pd = (mx - mn) * 0.07 || 0.1; lo[k] = mn - pd; hi[k] = mx + pd; });
+    axes(g, lo[0], hi[0], lo[1], hi[1], FN[a], FN[b], 0);
+    for (q = 0; q < NR; q++) dot(g.c, g.X(X[q][a]), g.Y(X[q][b]), Y[q] ? ORA : TEAL, 4.5);
+    if (S.cur.F) { var cx = g.X(S.cur.F[a]), cy = g.Y(S.cur.F[b]); g.c.strokeStyle = "#1d2433"; g.c.lineWidth = 2; g.c.beginPath(); g.c.arc(cx, cy, 9, 0, 7); g.c.stroke(); g.c.fillStyle = "#1d2433"; g.c.font = "11px system-ui,sans-serif"; g.c.textAlign = "left"; g.c.fillText("scheda 1", cx + 12, cy + 4); }
+    var tb = $("ft").tBodies[0], h = ""; for (q = 0; q < NF; q++) {
+      var dd = SEPD[q], cv = S.cur.F ? S.cur.F[q] : null;
+      h += "<tr data-j='" + q + "'><td class='l'><b>" + FN[q] + "</b></td><td>" + g2s(mean(colOf(q, 0))) + "</td><td>" + g2s(mean(colOf(q, 1))) + "</td><td style='text-align:left'><span class='sep' style='width:" + Math.round(Math.min(dd, 2.5) * 22) + "px'></span> " + f2(dd) + "</td><td>" + (cv === null ? "–" : g2s(cv)) + "</td></tr>"; }
+    tb.innerHTML = h; Array.prototype.forEach.call(tb.rows, function (r) { r.onclick = function () { var j = +r.getAttribute("data-j"); if (flip++ % 2) fy.value = j; else fx.value = j; d2(); }; });
+  }
+  fx.onchange = fy.onchange = d2;
+
+  /* ---------- 3 · correlazione ---------- */
+  function corrM() {
+    var tr = S.sp.tr, v = [], q, j, k; for (j = 0; j < NF; j++) v.push(tr.map(function (r) { return X[r][j]; })); v.push(tr.map(function (r) { return Y[r]; }));
+    var mu = v.map(mean), sd = v.map(sdv), R = []; for (j = 0; j <= NF; j++) { R.push([]); for (k = 0; k <= NF; k++) { var s = 0; for (q = 0; q < tr.length; q++) s += (v[j][q] - mu[j]) * (v[k][q] - mu[k]); R[j].push(s / tr.length / (sd[j] * sd[k] || 1)); } }
+    return R;
+  }
+  function redund(R, th) { var out = []; for (var j = 0; j < NF; j++) for (var k = j + 1; k < NF; k++) if (S.sel[j] && S.sel[k] && Math.abs(R[j][k]) > th) out.push([j, k]); return out; }
+  function d3() {
+    var R = corrM(), g = frame("cv3", 92, 10, 10, 94), n = NF + 1, cw = (g.W - g.L - g.R) / n, ch = (g.H - g.T - g.B) / n, c = g.c, j, k, th = +$("rth").value;
+    var names = SHORT.concat(["Guasto"]);
+    c.font = "12px system-ui,sans-serif";
+    for (j = 0; j < n; j++) { c.fillStyle = (j < NF && !S.sel[j]) ? "#aab1b8" : "#1d2433"; c.textAlign = "right"; c.fillText(names[j], g.L - 6, g.T + j * ch + ch / 2 + 4); c.save(); c.translate(g.L + j * cw + cw / 2 + 4, g.T + n * ch + 8); c.rotate(-Math.PI / 3); c.textAlign = "right"; c.fillText(names[j], 0, 0); c.restore(); }
+    for (j = 0; j < n; j++) for (k = 0; k < n; k++) { var r = R[j][k], x = g.L + k * cw, y = g.T + j * ch, a = Math.min(1, Math.abs(r)); c.fillStyle = r >= 0 ? "rgba(15,110,110," + a.toFixed(2) + ")" : "rgba(192,97,27," + a.toFixed(2) + ")"; c.fillRect(x, y, cw - 1, ch - 1);
+      c.fillStyle = a > 0.55 ? "#fff" : "#1d2433"; c.font = "11px system-ui,sans-serif"; c.textAlign = "center"; c.fillText(f2(r), x + cw / 2, y + ch / 2 + 4); }
+    c.strokeStyle = RED; c.lineWidth = 2.5; redund(R, th).forEach(function (p) { [[p[0], p[1]], [p[1], p[0]]].forEach(function (z) { c.strokeRect(g.L + z[1] * cw + 1, g.T + z[0] * ch + 1, cw - 3, ch - 3); }); });
+    var h = ""; for (j = 0; j < NF; j++) h += "<label><input type='checkbox' data-j='" + j + "'" + (S.sel[j] ? " checked" : "") + "> " + FN[j] + "</label><span class='bar2'><i style='width:" + Math.round(Math.abs(R[j][NF]) * 100) + "%'></i></span><span>" + f2(Math.abs(R[j][NF])) + "</span>";
+    $("chk").innerHTML = h; Array.prototype.forEach.call($("chk").querySelectorAll("input"), function (el) { el.onchange = function () { S.sel[+el.getAttribute("data-j")] = el.checked; if (!cols().length) { S.sel[+el.getAttribute("data-j")] = true; } S.M = fit(S.leak); d3(); }; });
+    var red = redund(R, th), t = "<p>Quanto <b>si assomigliano</b> due feature? La correlazione r (da −1 a +1) lo misura. Se |r| è vicino a 1, due colonne portano la <b>stessa informazione</b>: tenerle entrambe non aiuta, e complica il modello.</p>";
+    if (red.length) t += "<p>Coppie sopra la soglia " + f2(th) + ": " + red.map(function (p) { return "<b>" + FN[p[0]] + "</b> e <b>" + FN[p[1]] + "</b> (r = " + f2(R[p[0]][p[1]]) + ")"; }).join("; ") + ".</p>"; else t += "<p class='warn good'>Con la soglia " + f2(th) + " non ci sono coppie ridondanti tra le feature selezionate.</p>";
+    t += "<p>Feature selezionate: <b>" + cols().length + " su " + NF + "</b>. Nel caso reale della tesi si è passati da <b>59 feature a meno di 20</b> con lo stesso criterio.</p>";
+    $("o3t").innerHTML = t;
+  }
+  $("rth").oninput = function () { $("rthv").textContent = f2(+this.value); d3(); };
+  $("b3a").onclick = function () {
+    var R = corrM(), th = +$("rth").value, guard = 0;
+    while (guard++ < 30) { var p = redund(R, th); if (!p.length) break; var best = p[0], bk = 0; p.forEach(function (z) { if (Math.abs(R[z[0]][z[1]]) > bk) { bk = Math.abs(R[z[0]][z[1]]); best = z; } });
+      var drop = Math.abs(R[best[0]][NF]) < Math.abs(R[best[1]][NF]) ? best[0] : best[1]; S.sel[drop] = false; }
+    S.M = fit(S.leak); d3();
+  };
+  $("b3b").onclick = function () { for (var q = 0; q < NF; q++) S.sel[q] = true; S.M = fit(S.leak); d3(); };
+
+  /* ---------- 4 · training/test e scala ---------- */
+  function d4() {
+    var g = frame("cv4", 12, 12, 12, 12), c = g.c, per = 20, rows = NR / per, dx = (g.W - 24) / per, dy = (g.H - 24) / rows, isTe = {}, q;
+    S.sp.te.forEach(function (z) { isTe[z] = 1; });
+    for (q = 0; q < NR; q++) { var px = 12 + (q % per + 0.5) * dx, py = 12 + (Math.floor(q / per) + 0.5) * dy; dot(c, px, py, Y[q] ? ORA : TEAL, 7, !!isTe[q]); }
+    var cs = cols(), M = S.M, ntr = S.sp.tr.length, nte = S.sp.te.length;
+    var all = X.map(function (_, z) { return z; }), sa = scaler(X, all, cs), st = scaler(X, S.sp.tr, cs), h = "<thead><tr><th class='l'>Feature</th><th>μ training</th><th>σ training</th><th>μ tutti</th><th>σ tutti</th></tr></thead><tbody>";
+    cs.forEach(function (j, k) { h += "<tr><td class='l'><b>" + FN[j] + "</b></td><td>" + f3(st[k].m) + "</td><td>" + f3(st[k].s) + "</td><td>" + f3(sa[k].m) + "</td><td>" + f3(sa[k].s) + "</td></tr>"; });
+    $("sct").innerHTML = h + "</tbody>"; $("sp4").textContent = ntr + " training · " + nte + " test";
+    var ok = fit(false), bad = fit(true), a1 = accOf(ok, S.sp.te, 1, 0.5), a2 = accOf(bad, S.sp.te, 1, 0.5);
+    var cntTr = [0, 0], cntTe = [0, 0]; S.sp.tr.forEach(function (z) { cntTr[Y[z]]++; }); S.sp.te.forEach(function (z) { cntTe[Y[z]]++; });
+    var t = "<p>Le " + NR + " registrazioni si dividono in <b>training</b> (" + ntr + ": " + cntTr[0] + " sani, " + cntTr[1] + " guasti) e <b>test</b> (" + nte + ": " + cntTe[0] + " sani, " + cntTe[1] + " guasti). La divisione conserva la proporzione tra le classi (<i>stratificata</i>).</p>" +
+      "<p>La <b>standardizzazione</b> porta tutte le feature alla stessa scala (media 0, deviazione standard 1). Media e σ si calcolano <b>solo sul training</b> e poi si applicano, identiche, al test.</p>";
+    t += S.leak ? "<p class='warn'><b>Attenzione, data leakage.</b> Hai calcolato μ e σ su <b>tutti</b> i dati: il test ha «sbirciato» nel calcolo. Qui l’accuratezza sul test diventa <b>" + pc(a2) + "</b> contro <b>" + pc(a1) + "</b> del procedimento corretto. Con pochi dati la differenza può essere piccola o anche a favore, ma in generale rende il test <b>meno onesto</b>.</p>" :
+      "<p class='warn good'>Procedimento corretto: μ e σ dal solo training. Accuratezza sul test: <b>" + pc(a1) + "</b> (con il leakage sarebbe " + pc(a2) + ").</p>";
+    $("o4t").innerHTML = t;
+  }
+  $("tf").oninput = function () { S.tf = this.value / 100; $("tfv").textContent = this.value + " %"; refit(); d4(); };
+  $("b4r").onclick = function () { S.seed += 11; refit(); d4(); };
+  $("lk").onchange = function () { S.leak = this.checked; S.M = fit(S.leak); d4(); };
+
+  /* ---------- strip delle probabilità ---------- */
+  function strip(id, P, idx, th, show) {
+    var g = frame(id, 40, 14, 14, 40), c = g.c, hh = g.H - g.T - g.B;
+    axes(g, 0, 1, 0, 1, "probabilità prevista di «guasto»", "", 0);
+    c.fillStyle = "rgba(192,97,27,.07)"; c.fillRect(g.X(th), g.T, g.X(1) - g.X(th), hh); c.fillStyle = "rgba(15,110,110,.07)"; c.fillRect(g.X(0), g.T, g.X(th) - g.X(0), hh);
+    c.font = "11px system-ui,sans-serif"; c.fillStyle = "#566074"; c.textAlign = "left"; c.fillText("previsto sano", g.L + 6, g.T + 13); c.textAlign = "right"; c.fillText("previsto guasto", g.W - g.R - 6, g.T + 13);
+    idx.forEach(function (q, k) { var yj = 0.18 + 0.7 * (((k * 0.6180339) % 1)), y = g.T + 22 + (hh - 34) * yj, wrong = (P[k] >= th ? 1 : 0) !== Y[q]; dot(c, g.X(P[k]), y, Y[q] ? ORA : TEAL, 5.5);
+      if (show && wrong) { c.strokeStyle = RED; c.lineWidth = 2; c.beginPath(); c.arc(g.X(P[k]), y, 9, 0, 7); c.stroke(); } });
+    c.strokeStyle = "#1d2433"; c.lineWidth = 2.2; c.beginPath(); c.moveTo(g.X(th), g.T); c.lineTo(g.X(th), g.H - g.B); c.stroke();
+  }
+
+  /* ---------- 5 · modello ---------- */
+  var anim = 0;
+  function d5() {
+    var M = S.M, it = S.it, g = frame("cv5a", 52, 14, 14, 40), c = g.c, L0 = M.path[0].L, mx = Math.max(L0, 0.8);
+    axes(g, 0, 300, 0, mx, "iterazioni", "costo (log-loss)", 0);
+    c.strokeStyle = NAVY; c.lineWidth = 2; c.beginPath(); for (var q = 0; q <= it; q++) { var x = g.X(q), y = g.Y(M.path[q].L); if (q) c.lineTo(x, y); else c.moveTo(x, y); } c.stroke();
+    dot(c, g.X(it), g.Y(M.path[it].L), ORA, 6);
+    var P = probs(M, S.sp.te, 1, it); strip("cv5b", P, S.sp.te, 0.5, true);
+    var m = M.path[it], tr = accOf(M, S.sp.tr, 1, 0.5, it), te = accOf(M, S.sp.te, 1, 0.5, it);
+    var t = "<p>Iterazione <b>" + it + "</b>: costo <b>" + f3(m.L) + "</b>. Accuratezza sul training <b>" + pc(tr) + "</b>, sul test <b>" + pc(te) + "</b>.</p><p>Il modello calcola per ogni registrazione un punteggio w·z + b e lo trasforma in una <b>probabilità</b> di guasto con la sigmoide. All’inizio (tutti i pesi a 0) dà 0,5 a tutti; allenandosi, i guasti si spostano verso 1 e i sani verso 0.</p>";
+    t += "<div class='pgrid'>" + M.cs.map(function (j, k) { return "<span>" + FN[j] + ": <b>w = " + f2(m.w[k]) + "</b></span>"; }).join("") + "<span>bias: <b>b = " + f2(m.b) + "</b></span></div><p class='hint'>Un peso positivo grande: la feature (standardizzata) spinge verso «guasto».</p>";
+    $("o5t").innerHTML = t; $("itv").textContent = it;
+    $("h5").innerHTML = "In alto: il <b>costo</b> scende allenandosi. In basso: le probabilità previste per le registrazioni di <b>test</b> (mai usate per allenare), con soglia 0,5.";
+  }
+  $("it").oninput = function () { stopAnim(); S.it = +this.value; d5(); };
+  function stopAnim() { if (anim) { clearInterval(anim); anim = 0; } }
+  function play() { stopAnim(); S.it = 0; $("it").value = 0; d5(); anim = setInterval(function () { S.it = Math.min(300, S.it + (S.it < 30 ? 2 : 6)); $("it").value = S.it; d5(); if (S.it >= 300) stopAnim(); }, 40); }
+  $("b5p").onclick = play; $("b5e").onclick = function () { stopAnim(); S.it = 300; $("it").value = 300; d5(); };
+
+  /* ---------- 6 · matrice ---------- */
+  function d6() {
+    var M = S.M, th = S.th, k = S.nz, te = S.sp.te, P = probs(M, te, k, 300), yt = te.map(function (q) { return Y[q]; }), cm = conf(P, yt, th);
+    strip("cv6", P, te, th, true);
+    var N = te.length, acc = (cm.tp + cm.tn) / N, pr = cm.tp + cm.fp ? cm.tp / (cm.tp + cm.fp) : 0, rc = cm.tp + cm.fn ? cm.tp / (cm.tp + cm.fn) : 0, f1v = pr + rc ? 2 * pr * rc / (pr + rc) : 0;
+    $("cmT").innerHTML = "<table class='cmx'><tr><th></th><th>previsto «sano»</th><th>previsto «guasto»</th></tr>" +
+      "<tr><th>vero «sano»</th><td class='ok'><b>" + cm.tn + "</b><small>VN · sano e riconosciuto</small></td><td class='er'><b>" + cm.fp + "</b><small>FP · falso allarme</small></td></tr>" +
+      "<tr><th>vero «guasto»</th><td class='er'><b>" + cm.fn + "</b><small>FN · guasto non visto</small></td><td class='ok'><b>" + cm.tp + "</b><small>VP · guasto trovato</small></td></tr></table>" +
+      "<div class='met'><div>accuratezza (VP+VN)/N<b>" + pc(acc) + "</b></div><div>precisione VP/(VP+FP)<b>" + pc(pr) + "</b></div><div>richiamo VP/(VP+FN)<b>" + pc(rc) + "</b></div><div>F1 (media armonica)<b>" + pc(f1v) + "</b></div></div>";
+    $("thv").textContent = f2(th); $("nzv").textContent = "×" + f2(k);
+    var accTr = accOf(M, S.sp.tr, 1, th), t = "<p>Su <b>" + N + "</b> registrazioni di test: <b>" + (cm.tp + cm.tn) + "</b> giuste e <b>" + (cm.fp + cm.fn) + "</b> sbagliate. Accuratezza sul training: <b>" + pc(accTr) + "</b>; sul test: <b>" + pc(acc) + "</b>.</p>";
+    if (k > 1) t += "<p class='warn'>Ambiente rumoroso ×" + f2(k) + ": i valori delle feature che dipendono dall’<b>ampiezza</b> o dal contenuto in alta frequenza (RMS, dev. standard, picchi, energia oltre 400 Hz) crescono col rumore, e il modello li scambia per segni di guasto: aumentano i <b>falsi allarmi</b>. È ciò che la tesi osserva con il rumore dell’ambiente.</p>";
+    else t += "<p><b>Precisione</b>: quando suona l’allarme, quante volte c’è davvero un guasto? <b>Richiamo</b>: tra i guasti veri, quanti ne troviamo? Abbassando la soglia si trovano più guasti (richiamo ↑) ma con più falsi allarmi (precisione ↓). In un impianto un guasto non visto costa di solito più di un falso allarme.</p>";
+    $("o6t").innerHTML = t;
+  }
+  $("th").oninput = function () { S.th = +this.value; d6(); };
+  $("nz").oninput = function () { S.nz = +this.value; d6(); };
+
+  /* ---------- esperienze guidate ---------- */
+  function sel() { return Array.prototype.slice.call(arguments); }
+  function setr(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setSt(l) { document.querySelector("input[name=st1][value='" + l + "']").checked = true; S.cur.label = l; d1(); }
+  function onlyCols(list) { for (var q = 0; q < NF; q++) S.sel[q] = list.indexOf(q) > -1; S.M = fit(S.leak); }
+  function reset() { for (var q = 0; q < NF; q++) S.sel[q] = true; S.leak = false; $("lk").checked = false; S.tf = 0.2; $("tf").value = 20; $("tfv").textContent = "20 %"; S.seed = 42; S.th = 0.5; $("th").value = 0.5; S.nz = 1; $("nz").value = 1; S.it = 300; $("it").value = 300; $("rth").value = 0.9; $("rthv").textContent = "0,90"; S.cur = { label: 0, seed: 777001, zoom: false }; $("z1").checked = false; refit(); }
+  var EXPS = [
+    { id: "g1", title: "Dai segnali alla matrice di confusione", time: "12 min", desc: "Tutta la pipeline in sei passi: segnale, feature, selezione, divisione e scala, modello, matrice.", steps: [
+      { t: "Il segnale grezzo", x: "Un accelerometro sul motore registra le vibrazioni: <b>1024 numeri</b> in mezzo secondo. Questo è un motore <b>sano</b>: onda regolare e un po’ di rumore. Sono dati <b>simulati</b>, costruiti per imitare il caso reale.", el: "#cv1a", apply: function () { reset(); tab(1); setSt(0); } },
+      { t: "Il segnale di un guasto", x: "Con un cuscinetto danneggiato compaiono <b>urti ripetuti</b> sopra l’onda regolare. Ingrandisci per vederli. La classe da riconoscere è l’<b>etichetta</b>: sano (0) o guasto (1).", el: sel("#cv1a", "#opt1"), btn: "Mostra un guasto ingrandito", apply: function () { $("z1").checked = true; S.cur.zoom = true; setSt(1); } },
+      { t: "Lo spettro", x: "Lo <b>spettro</b> mostra le frequenze presenti. Gli urti riempiono la zona <b>oltre 400 Hz</b>: un’informazione che nel tempo è meno evidente. Nella tesi si usano feature nel tempo e nelle frequenze.", el: "#cv1b" },
+      { t: "Dalle registrazioni alle feature", x: "Ogni registrazione viene riassunta da <b>8 feature</b>. Qui ogni punto è una registrazione, descritta da due sole feature: <b>curtosi</b> e <b>energia oltre 400 Hz</b>. Le due nuvole sono ben distinte: le feature <b>funzionano</b>.", el: "#cv2", apply: function () { tab(2); fx.value = 4; fy.value = 7; d2(); } },
+      { t: "Quali feature separano?", x: "La tabella dà a ogni feature un indice di <b>separazione</b>. Qui l’energia in alta frequenza è la migliore; la media è quasi inutile. Provi a cambiare gli assi cliccando le righe.", el: "#ftP" },
+      { t: "Feature ridondanti", x: "Nella matrice di correlazione i riquadri rossi segnalano coppie che dicono <b>la stessa cosa</b>: <b>RMS e deviazione standard</b> hanno r quasi uguale a 1. Una delle due è inutile.", el: "#cv3", apply: function () { tab(3); } },
+      { t: "Selezione", x: "Premi il pulsante: per ogni coppia ridondante si elimina la feature <b>meno legata all’etichetta</b>. Restano meno colonne, con la stessa informazione. È la riduzione, nella tesi, da 59 a meno di 20 feature.", el: "#side3", btn: "Elimina le ridondanti", apply: function () { $("b3a").click(); } },
+      { t: "Training e test", x: "Si tengono da parte il <b>20 %</b> dei dati (cerchi vuoti): il <b>test</b>. Il modello non li vedrà finché non è allenato. Serve a misurare se il modello funziona su dati <b>nuovi</b>, non solo su quelli già visti.", el: "#cv4", apply: function () { tab(4); } },
+      { t: "Scala e leakage", x: "Le feature hanno scale diverse, quindi si <b>standardizzano</b>. Media e σ si calcolano sul <b>solo training</b>: provando a usare tutti i dati, il test «sbircia» e compare l’avviso.", el: sel("#sct", "#opt4"), btn: "Prova con tutti i dati", apply: function () { $("lk").checked = true; S.leak = true; S.M = fit(true); d4(); } },
+      { t: "Il modello impara", x: "Una <b>regressione logistica</b> (un neurone!) trasforma le feature in una probabilità di guasto. Premi il pulsante e guarda il <b>costo scendere</b> mentre le registrazioni si dividono.", el: sel("#cv5a", "#cv5b"), btn: "Allena dall’inizio", apply: function () { $("lk").checked = false; S.leak = false; S.M = fit(false); tab(5); play(); } },
+      { t: "La matrice di confusione", x: "Sul test, ogni registrazione cade in una delle quattro caselle: <b>VN</b> e <b>VP</b> (giuste), <b>FP</b> (falso allarme), <b>FN</b> (guasto non visto). Da qui si ricavano accuratezza, precisione, richiamo, F1.", el: "#cmP", apply: function () { stopAnim(); S.it = 300; tab(6); } },
+      { t: "Scegli la soglia", x: "Abbassa la soglia a 0,25: i falsi negativi calano (si trovano più guasti) ma aumentano i falsi allarmi. Quale errore costa di più? È una domanda di <b>matematica applicata</b>, non di informatica.", el: sel("#opt6", "#cmP"), btn: "Soglia 0,25", apply: function () { setr("th", 0.25); } }
+    ] },
+    { id: "g2", title: "Un nuovo ambiente, nuovi errori", time: "6 min", desc: "Perché un modello che dà il 95 % in laboratorio può fallire in fabbrica; le feature contano.", steps: [
+      { t: "Il risultato di laboratorio", x: "Test nello stesso ambiente dell’addestramento: la matrice è quasi tutta sulla diagonale. È come la prova 1 della tesi (99–100 %).", el: "#cmP", apply: function () { reset(); tab(6); } },
+      { t: "Cambia l’ambiente", x: "Alza il rumore dell’ambiente nel test a <b>×1,3</b>. Le registrazioni sane ora hanno feature simili a quelle dei guasti, e il modello lancia molti <b>falsi allarmi</b>. La tesi osserva lo stesso nelle prove con rumore.", el: sel("#opt6", "#cmP"), btn: "Rumore ×1,3", apply: function () { setr("nz", 1.3); } },
+      { t: "Quali feature si fidano del rumore?", x: "RMS, deviazione standard, picchi ed energia in alta frequenza <b>crescono col rumore</b>. Curtosi, asimmetria e fattore di cresta sono rapporti, meno sensibili. Torna alla scheda 3 e tieni <b>solo asimmetria, curtosi e cresta</b>.", el: "#side3", btn: "Solo asimmetria, curtosi, cresta", apply: function () { tab(3); onlyCols([3, 4, 5]); d3(); } },
+      { t: "Stesso test, altre feature", x: "Con le sole tre feature meno sensibili al rumore, in laboratorio l’accuratezza scende (circa 88 % contro 95 %), ma con rumore ×1,3 sale da circa 65 % a 75 %: meno brillante, più <b>robusto</b>. È il punto della tesi: <b>le feature contano più dell’algoritmo</b>.", el: sel("#cmP", "#opt6"), apply: function () { tab(6); setr("nz", 1.3); } }
+    ] },
+    { id: "g3", title: "Selezione delle feature e leakage", time: "5 min", desc: "Correlazione, ridondanza e il test che «sbircia».", steps: [
+      { t: "Quando due colonne sono la stessa", x: "Ecco le correlazioni: r = 1 tra RMS e deviazione standard non è un caso, perché il segnale ha media quasi zero e quindi i due numeri coincidono. In algebra lineare: due colonne <b>linearmente dipendenti</b> (quasi).", el: "#cv3", apply: function () { reset(); tab(3); } },
+      { t: "Abbassa la soglia", x: "Con una soglia di |r| più bassa (0,7) compaiono altre coppie di feature simili. Più bassa è la soglia, più feature si eliminano.", el: sel("#side3", "#cv3"), btn: "Soglia 0,7", apply: function () { setr("rth", 0.7); } },
+      { t: "Elimina e confronta", x: "Elimina le ridondanti e guarda quante feature restano. Poi, nelle schede 5 e 6, il modello con meno colonne è quasi altrettanto accurato: <b>meno è meglio</b> quando l’informazione è la stessa.", el: "#side3", btn: "Elimina le ridondanti", apply: function () { $("b3a").click(); } },
+      { t: "Leakage", x: "Nella scheda 4 spunta «μ e σ su tutti i dati»: è l’errore di <b>sbirciare nel test</b>. Un errore frequente anche tra i professionisti: i risultati sembrano più belli del vero.", el: "#opt4", btn: "Vai alla scheda 4", apply: function () { tab(4); $("lk").checked = true; S.leak = true; S.M = fit(true); d4(); } }
+    ] }
+  ];
+  Tour.init(EXPS);
+  d1();
+  window.addEventListener("load", function () { d1(); });
+})();
+</script>
+</body>
+</html>

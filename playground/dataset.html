@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dataset, feature ed etichette</title>
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+.tabs{flex-wrap:wrap;padding:12px 16px 0;max-width:1200px;margin:0 auto}
+.tabs button{font:inherit;font-size:.92rem;padding:8px 14px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer;border-radius:8px 8px 0 0}
+.tabs button.on{background:var(--navy);color:#fff}
+.tabs button:focus-visible{outline:3px solid #f2b266;outline-offset:1px}
+.wide{max-width:1200px;margin:0 auto;padding:14px 16px}
+.dt{width:100%;border-collapse:separate;border-spacing:0;font-size:.9rem;font-variant-numeric:tabular-nums}
+.dt th,.dt td{padding:7px 9px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:right;white-space:nowrap;background:#fff}
+.dt td.l,.dt th.l{text-align:left}
+.dt tr td:first-child,.dt tr th:first-child{border-left:1px solid var(--line)}
+.dt thead th{background:var(--panel);cursor:pointer;vertical-align:top;border-top:1px solid var(--line);user-select:none}
+.dt thead th:hover{background:var(--soft)}
+.dt thead th:focus-visible{outline:3px solid #f2b266;outline-offset:-3px}
+.dt thead th .cn{display:block;color:var(--navy);font-weight:700}
+.dt thead th .ty{display:block;font-size:.72rem;color:var(--mute);font-weight:500}
+.dt thead th .rl{display:inline-block;margin-top:3px;font-size:.68rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:1px 8px}
+.dt .r-feature .rl{background:#d8ecec;color:#0F6E6E}
+.dt .r-target .rl{background:#f7dcc6;color:#9a4a10}
+.dt .r-ignora .rl{background:#e4e7ea;color:#5c6670}
+.dt td.r-feature{background:#f1f9f9}
+.dt td.r-target{background:#fdf1e6}
+.dt td.r-ignora{background:#f3f4f5;color:#8a929b}
+.dt tbody tr{cursor:pointer}
+.dt tbody tr:hover td{filter:brightness(.97)}
+.dt tbody tr.sel td:first-child{box-shadow:inset 4px 0 0 var(--orange)}
+.dt tbody tr.sel td{font-weight:600}
+.hl-row tbody tr.sel td{outline:2px solid var(--orange);outline-offset:-2px}
+.hl-feat td.r-feature,.hl-feat th.r-feature{outline:2px solid #0F6E6E;outline-offset:-2px}
+.hl-tgt td.r-target,.hl-tgt th.r-target{outline:2px solid var(--orange);outline-offset:-2px}
+.hl-all{outline:3px solid var(--navy);outline-offset:3px}
+.tw2{overflow-x:auto;border-radius:8px;padding:3px}
+.terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+.terms .t{border:1px solid var(--line);border-left:5px solid var(--navy);border-radius:8px;padding:7px 10px;background:#fff;cursor:default;font-size:.88rem}
+.terms .t b{display:block;color:var(--navy)}
+.terms .t i{display:block;font-style:normal;color:var(--mute);font-size:.8rem}
+.terms .t.f{border-left-color:#0F6E6E}.terms .t.g{border-left-color:var(--orange)}.terms .t.r{border-left-color:#7a4fb5}
+.terms .t:hover,.terms .t:focus-visible{background:var(--soft);outline:none}
+.warn{background:#fff7ea;border:1px solid #efcfa8;border-radius:8px;padding:8px 12px;font-size:.9rem;color:#5b3a10;margin-top:8px}
+.warn.good{background:#e6f2e7;border-color:#b9d8bb;color:#1f5d24}
+.vec{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88rem;background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 9px;margin-top:6px;overflow-x:auto;white-space:nowrap}
+.flow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media(max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}}
+.flow .col{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px}
+.flow h3{font-size:1rem;margin:0 0 8px}
+.flow .st{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.88rem}
+.flow .bx{border:2px solid var(--navy);border-radius:8px;padding:5px 9px;background:var(--soft);font-weight:600;color:var(--navy)}
+.flow .bx.o{border-color:var(--orange);background:#fdf1e6;color:#9a4a10}
+.flow .bx.g{border-color:#0F6E6E;background:#e4f2f2;color:#0F6E6E}
+.flow .ar{font-weight:800;color:var(--mute)}
+.flow .nt{font-size:.84rem;color:var(--mute);margin-top:8px}
+.cmp{width:100%;font-size:.88rem}
+.cmp th{white-space:normal}
+.cmp td:first-child{font-weight:700;color:var(--navy);white-space:nowrap}
+.cm{border-collapse:collapse;margin-top:6px;font-size:.88rem}
+.cm td,.cm th{border:1px solid var(--line);padding:4px 10px;text-align:center;background:#fff}
+.cm th{background:var(--panel)}
+.big{font-size:1.15rem;font-weight:700;color:var(--navy)}
+</style>
+</head>
+<body>
+<script src="../assets/nav.js"></script>
+<div class="pghead">
+  <div><h1>Dataset, feature ed etichette</h1><p>righe, colonne, target: che cosa sono, e come cambia il problema se cambia la colonna da prevedere</p></div>
+  <button id="tourMenuBtn">🎓 Esperienze guidate</button>
+</div>
+<div class="tabs" role="tablist" aria-label="Sezioni">
+  <button id="tb1" class="on" role="tab" data-tab="1">1 · La tabella dei dati</button>
+  <button id="tb2" role="tab" data-tab="2">2 · Con o senza etichette</button>
+  <button id="tb3" role="tab" data-tab="3">3 · Programmare o imparare?</button>
+  <button id="tb4" role="tab" data-tab="4">4 · Regressione o classificazione</button>
+</div>
+
+<!-- ============ 1 · TABELLA ============ -->
+<section class="wide" id="p1">
+  <div class="panel"><h2>Il dataset</h2>
+    <div class="row"><label for="dSel">Esempio</label>
+      <select id="dSel"><option value="auto">Automobili (dati veri)</option><option value="iris">Fiori: iris (dati veri)</option><option value="stud">Studenti (dati inventati)</option></select></div>
+    <p class="hint" id="dNote"></p>
+    <div class="tw2" id="tblWrap"><table class="dt" id="tbl"></table></div>
+    <p class="hint"><b>Clicca sull’intestazione</b> di una colonna per cambiarne il ruolo: <span class="sw" style="background:#0F6E6E"></span>feature → <span class="sw" style="background:#C0611B"></span>target → <span class="sw" style="background:#8a929b"></span>ignorata. <b>Clicca su una riga</b> per vederla come vettore.</p>
+  </div>
+  <div class="cols2" style="margin-top:12px">
+    <div>
+      <div class="panel read" id="sumP" aria-live="polite"><h2>Che problema è?</h2><div id="sumT"></div></div>
+      <div id="warnP" aria-live="polite"></div>
+    </div>
+    <div>
+      <div class="panel read" id="rowP" aria-live="polite"><h2>Una riga come vettore</h2><div id="rowT"></div></div>
+      <div class="panel" id="legend"><h2>Le parole (passa il mouse o tocca)</h2>
+        <div class="terms">
+          <div class="t" tabindex="0" data-hl="all"><b>Dataset</b><i>tutta la tabella</i></div>
+          <div class="t" tabindex="0" data-hl="row"><b>Sample</b><i>esempio · osservazione · record · riga</i></div>
+          <div class="t f" tabindex="0" data-hl="feat"><b>Feature</b><i>variabile · attributo · predittore · colonna</i></div>
+          <div class="t g" tabindex="0" data-hl="tgt"><b>Target</b><i>etichetta · label · variabile risposta</i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 · CON O SENZA ETICHETTE ============ -->
+<main class="app" id="p2" hidden>
+  <section>
+    <canvas id="cv2" width="640" height="520" aria-label="Piano peso–potenza di 60 automobili"></canvas>
+    <p class="hint" id="h2"></p>
+  </section>
+  <section>
+    <div class="panel" id="opt2"><h2>Hai le etichette?</h2>
+      <div class="row"><label><input type="radio" name="m2" value="sup" checked> <b>Sì</b>: so l’origine di ogni auto (supervisionato)</label></div>
+      <div class="row"><label><input type="radio" name="m2" value="uns"> <b>No</b>: ho solo peso e potenza (non supervisionato)</label></div>
+      <div class="row" id="r2u" hidden><button id="b2k" class="pri">Cerca 3 gruppi</button><button id="b2r">Azzera</button></div>
+    </div>
+    <div class="panel read" id="o2" aria-live="polite"><h2>Che cosa può fare il modello</h2><div id="o2t"></div></div>
+  </section>
+</main>
+
+<!-- ============ 3 · PROGRAMMARE O IMPARARE ============ -->
+<section class="wide" id="p3" hidden>
+  <div class="flow" id="flow">
+    <div class="col"><h3>Programmazione tradizionale</h3>
+      <div class="st"><span class="bx">dati</span><span class="ar">+</span><span class="bx o">regole</span><span class="ar">→</span><span class="bx g">risposte</span></div>
+      <p class="nt">Le <b>regole</b> le scrive una persona. Se cambia la situazione, qualcuno deve riscrivere le regole.</p></div>
+    <div class="col"><h3>Machine learning</h3>
+      <div class="st"><span class="bx">dati</span><span class="ar">+</span><span class="bx g">risposte</span><span class="ar">→</span><span class="bx o">regole</span></div>
+      <p class="nt">Si danno <b>esempi con la risposta</b> (le etichette): l’algoritmo ricava le <b>regole</b>. Con altri dati ricava altre regole.</p></div>
+  </div>
+  <div class="app" style="display:grid;grid-template-columns:minmax(300px,640px) minmax(300px,1fr);gap:16px;padding:14px 0;max-width:none">
+    <section>
+      <canvas id="cv3" width="640" height="480" aria-label="Peso e km con un litro, con la soglia della regola"></canvas>
+      <p class="hint"><span class="sw" style="background:#C0611B"></span>consuma tanto &nbsp; <span class="sw" style="background:#0F6E6E"></span>consuma poco &nbsp; ◯ = la regola sbaglia. Linea tratteggiata: la media dei km/litro (9,97).</p>
+    </section>
+    <section>
+      <div class="panel" id="d3"><h2>Quali auto?</h2>
+        <div class="row"><label for="s3">Gruppo</label><select id="s3"><option value="all">Tutte (60)</option><option value="USA">Solo americane</option><option value="Europa">Solo europee</option><option value="Giappone">Solo giapponesi</option></select></div>
+      </div>
+      <div class="panel" id="r3"><h2>La regola</h2>
+        <div class="row"><label for="t3">Soglia di peso</label><input type="range" id="t3" min="700" max="2400" step="10" value="1500"><output id="t3v">1500 kg</output></div>
+        <div class="row"><button id="b3" class="pri">Fai imparare la soglia al computer</button></div>
+      </div>
+      <div class="panel read" id="o3" aria-live="polite"><h2>Quanto funziona</h2><div id="o3t"></div></div>
+    </section>
+  </div>
+</section>
+
+<!-- ============ 4 · REGRESSIONE O CLASSIFICAZIONE ============ -->
+<main class="app" id="p4" hidden>
+  <section>
+    <canvas id="cv4" width="640" height="480" aria-label="Peso e km con un litro: il modello cambia in base al target"></canvas>
+    <p class="hint" id="h4"></p>
+  </section>
+  <section>
+    <div class="panel" id="m4"><h2>Che cosa vogliamo prevedere?</h2>
+      <div class="row"><label><input type="radio" name="g4" value="num" checked> <b>Quanti km</b> farà con un litro (un numero)</label></div>
+      <div class="row"><label><input type="radio" name="g4" value="cat"> <b>Se consuma tanto o poco</b> (una categoria)</label></div>
+      <p class="hint">Le feature sono le stesse (il peso). Cambia solo la colonna da prevedere.</p>
+    </div>
+    <div class="panel" id="x4"><h2>Un’auto nuova</h2>
+      <div class="row"><label for="w4">Peso</label><input type="range" id="w4" min="700" max="2400" step="10" value="1300"><output id="w4v">1300 kg</output></div>
+    </div>
+    <div class="panel read" id="o4" aria-live="polite"><h2>Che cosa risponde il modello</h2><div id="o4t"></div></div>
+  </section>
+  <section style="grid-column:1/-1">
+    <div class="panel" id="cmpP"><h2>Il confronto</h2>
+      <div class="tw"><table class="cmp" id="cmpT">
+        <thead><tr><th></th><th>Regressione</th><th>Classificazione</th></tr></thead>
+        <tbody>
+          <tr><td>Il target è…</td><td>un <b>numero</b> (km/litro, prezzo, temperatura)</td><td>una <b>categoria</b> (alto/basso, spam/non spam, specie)</td></tr>
+          <tr><td>Il modello risponde…</td><td>con un valore: «9,4 km/litro»</td><td>con una classe (e di solito una probabilità): «consuma tanto, 80 %»</td></tr>
+          <tr><td>Un errore è…</td><td>una <b>distanza</b> dal valore vero (si può sbagliare di poco o di tanto)</td><td>giusto o sbagliato (si può sbagliare in modi diversi: falsi positivi e falsi negativi)</td></tr>
+          <tr><td>Si misura con…</td><td>MAE, RMSE, R²</td><td>accuratezza, precisione, richiamo, matrice di confusione</td></tr>
+          <tr><td>Esempi di algoritmi</td><td>regressione lineare e polinomiale, KNN per regressione</td><td>regressione logistica, Bayes, KNN, alberi, reti neurali</td></tr>
+        </tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<footer class="sf"><div class="wrap">Matematica, Dati e Intelligenza Artificiale · Prof. Michele Crispoltoni</div></footer>
+<script src="../assets/tour.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var CARS = [{"n": "mazda rx-7 gs", "w": 1098, "h": 100, "y": 1980, "o": "Giappone", "k": 10.1}, {"n": "ford ltd", "w": 1979, "h": 158, "y": 1973, "o": "USA", "k": 5.5}, {"n": "datsun 510 hatchback", "w": 1104, "h": 92, "y": 1980, "o": "Giappone", "k": 15.7}, {"n": "chevrolet nova", "w": 1521, "h": 105, "y": 1976, "o": "USA", "k": 9.4}, {"n": "audi 100 ls", "w": 1102, "h": 90, "y": 1970, "o": "Europa", "k": 10.2}, {"n": "saab 99e", "w": 1077, "h": 95, "y": 1970, "o": "Europa", "k": 10.6}, {"n": "chevrolet monza 2+2", "w": 1461, "h": 110, "y": 1975, "o": "USA", "k": 8.5}, {"n": "audi 5000s (diesel)", "w": 1338, "h": 67, "y": 1980, "o": "Europa", "k": 15.5}, {"n": "ford gran torino", "w": 1878, "h": 140, "y": 1974, "o": "USA", "k": 6.8}, {"n": "volvo 264gl", "w": 1424, "h": 125, "y": 1978, "o": "Europa", "k": 7.2}, {"n": "peugeot 504", "w": 1212, "h": 87, "y": 1970, "o": "Europa", "k": 10.6}, {"n": "fiat 124 tc", "w": 1019, "h": 75, "y": 1974, "o": "Europa", "k": 11.1}, {"n": "toyota mark ii", "w": 1329, "h": 108, "y": 1976, "o": "Giappone", "k": 8.1}, {"n": "ford fairmont futura", "w": 1300, "h": 92, "y": 1982, "o": "USA", "k": 10.2}, {"n": "volvo 144ea", "w": 1301, "h": 112, "y": 1973, "o": "Europa", "k": 8.1}, {"n": "dodge colt hatchback custom", "w": 869, "h": 80, "y": 1979, "o": "USA", "k": 15.2}, {"n": "honda civic", "w": 814, "h": 53, "y": 1976, "o": "Giappone", "k": 14.0}, {"n": "toyota corona", "w": 1161, "h": 95, "y": 1978, "o": "Giappone", "k": 11.7}, {"n": "audi 5000", "w": 1284, "h": 103, "y": 1978, "o": "Europa", "k": 8.6}, {"n": "datsun 310 gx", "w": 905, "h": 67, "y": 1982, "o": "Giappone", "k": 16.2}, {"n": "datsun f-10 hatchback", "w": 882, "h": 70, "y": 1977, "o": "Giappone", "k": 14.2}, {"n": "dodge colt m/m", "w": 941, "h": 83, "y": 1977, "o": "USA", "k": 14.2}, {"n": "chevrolet cavalier", "w": 1182, "h": 88, "y": 1982, "o": "USA", "k": 11.9}, {"n": "honda prelude", "w": 1002, "h": 75, "y": 1982, "o": "Giappone", "k": 14.3}, {"n": "amc spirit dl", "w": 1211, "h": 80, "y": 1979, "o": "USA", "k": 11.6}, {"n": "volkswagen type 3", "w": 1022, "h": 54, "y": 1972, "o": "Europa", "k": 9.8}, {"n": "plymouth valiant", "w": 1466, "h": 100, "y": 1976, "o": "USA", "k": 9.4}, {"n": "mazda glc", "w": 957, "h": 65, "y": 1980, "o": "Giappone", "k": 19.8}, {"n": "toyota corolla liftback", "w": 1027, "h": 75, "y": 1977, "o": "Giappone", "k": 11.1}, {"n": "mercedes benz 300d", "w": 1601, "h": 77, "y": 1979, "o": "Europa", "k": 10.8}, {"n": "datsun 710", "w": 1154, "h": 97, "y": 1975, "o": "Giappone", "k": 10.2}, {"n": "datsun 210", "w": 916, "h": 65, "y": 1979, "o": "Giappone", "k": 13.5}, {"n": "chevrolet vega 2300", "w": 1027, "h": 90, "y": 1971, "o": "USA", "k": 11.9}, {"n": "toyota corolla 1200", "w": 804, "h": 65, "y": 1971, "o": "Giappone", "k": 13.2}, {"n": "ford pinto", "w": 1048, "h": 85, "y": 1973, "o": "USA", "k": 8.1}, {"n": "vw rabbit c (diesel)", "w": 946, "h": 48, "y": 1980, "o": "Europa", "k": 18.8}, {"n": "ford granada l", "w": 1286, "h": 112, "y": 1982, "o": "USA", "k": 9.4}, {"n": "opel manta", "w": 979, "h": 75, "y": 1973, "o": "Europa", "k": 10.2}, {"n": "mazda rx-4", "w": 1234, "h": 110, "y": 1977, "o": "Giappone", "k": 9.1}, {"n": "plymouth satellite custom", "w": 1560, "h": 105, "y": 1971, "o": "USA", "k": 6.8}, {"n": "vw rabbit", "w": 879, "h": 70, "y": 1976, "o": "Europa", "k": 12.3}, {"n": "mercury monarch ghia", "w": 1619, "h": 139, "y": 1978, "o": "USA", "k": 8.6}, {"n": "saab 99gle", "w": 1268, "h": 115, "y": 1978, "o": "Europa", "k": 9.2}, {"n": "volkswagen 1131 deluxe sedan", "w": 832, "h": 46, "y": 1970, "o": "Europa", "k": 11.1}, {"n": "renault 5 gtl", "w": 828, "h": 58, "y": 1977, "o": "Europa", "k": 15.3}, {"n": "mercedes-benz 240d", "w": 1474, "h": 67, "y": 1980, "o": "Europa", "k": 12.8}, {"n": "renault 12 (sw)", "w": 993, "h": 69, "y": 1972, "o": "Europa", "k": 11.1}, {"n": "mazda glc custom", "w": 894, "h": 68, "y": 1982, "o": "Giappone", "k": 13.2}, {"n": "toyota corona hardtop", "w": 1033, "h": 95, "y": 1972, "o": "Giappone", "k": 10.2}, {"n": "toyota mark ii", "w": 1273, "h": 122, "y": 1973, "o": "Giappone", "k": 8.5}, {"n": "datsun 280-zx", "w": 1320, "h": 132, "y": 1980, "o": "Giappone", "k": 13.9}, {"n": "plymouth arrow gs", "w": 1043, "h": 96, "y": 1977, "o": "USA", "k": 10.8}, {"n": "ford gran torino (sw)", "w": 2104, "h": 140, "y": 1974, "o": "USA", "k": 6.0}, {"n": "volkswagen rabbit l", "w": 898, "h": 74, "y": 1982, "o": "Europa", "k": 15.3}, {"n": "amc rebel sst", "w": 1557, "h": 150, "y": 1970, "o": "USA", "k": 6.8}, {"n": "oldsmobile cutlass ciera (diesel)", "w": 1368, "h": 85, "y": 1982, "o": "USA", "k": 16.2}, {"n": "amc gremlin", "w": 1265, "h": 100, "y": 1973, "o": "USA", "k": 7.7}, {"n": "honda civic (auto)", "w": 891, "h": 67, "y": 1982, "o": "Giappone", "k": 13.6}, {"n": "peugeot 504", "w": 1483, "h": 88, "y": 1976, "o": "Europa", "k": 8.1}, {"n": "toyota celica gt", "w": 1209, "h": 96, "y": 1982, "o": "Giappone", "k": 13.6}];
+  var AUTO = [["mazda rx-7 gs", 1098, 100, 1980, "Giappone", 10.1, "basso"], ["ford ltd", 1979, 158, 1973, "USA", 5.5, "alto"], ["datsun 510 hatchback", 1104, 92, 1980, "Giappone", 15.7, "basso"], ["chevrolet nova", 1521, 105, 1976, "USA", 9.4, "alto"], ["audi 100 ls", 1102, 90, 1970, "Europa", 10.2, "basso"], ["saab 99e", 1077, 95, 1970, "Europa", 10.6, "basso"], ["chevrolet monza 2+2", 1461, 110, 1975, "USA", 8.5, "alto"], ["audi 5000s (diesel)", 1338, 67, 1980, "Europa", 15.5, "basso"]];
+  var IRIS = [[5.1, 3.5, 1.4, 0.2, "setosa"], [4.9, 3.0, 1.4, 0.2, "setosa"], [4.7, 3.2, 1.3, 0.2, "setosa"], [7.0, 3.2, 4.7, 1.4, "versicolor"], [6.4, 3.2, 4.5, 1.5, "versicolor"], [6.9, 3.1, 4.9, 1.5, "versicolor"], [6.3, 3.3, 6.0, 2.5, "virginica"], [5.8, 2.7, 5.1, 1.9, "virginica"], [7.1, 3.0, 5.9, 2.1, "virginica"]];
+  var MEANK = 9.97;
+  var COL = { USA: "#1f77b4", Europa: "#2E7D32", Giappone: "#ff7f0e", alto: "#C0611B", basso: "#0F6E6E" };
+  function f1(x) { return x.toFixed(1).replace(".", ","); }
+  function f2(x) { return x.toFixed(2).replace(".", ","); }
+  function pc(x) { return Math.round(x * 100) + " %"; }
+  function lab(c) { return c.k < MEANK ? "alto" : "basso"; }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+  /* ---------- schede ---------- */
+  var cur = 1;
+  function tab(n) {
+    cur = n;
+    for (var i = 1; i <= 4; i++) { $("p" + i).hidden = (i !== n); $("tb" + i).className = (i === n ? "on" : ""); $("tb" + i).setAttribute("aria-selected", i === n); }
+    if (n === 2) draw2(); if (n === 3) { upd3(); } if (n === 4) upd4();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function (b) { b.onclick = function () { tab(+b.getAttribute("data-tab")); }; });
+
+  /* ---------- 1 · tabella ---------- */
+  var DS = {
+    auto: { note: "Otto automobili dal dataset <i>Auto MPG</i> (392 auto in tutto, costruite tra il 1970 e il 1982). Il consumo è in km con un litro; «Consumo» è alto se i km/litro sono sotto la media (9,97).", full: "392",
+      cols: [ { n: "Modello", t: "cat", id: 1, r: "ignora" }, { n: "Peso (kg)", t: "num", r: "feature" }, { n: "Cavalli", t: "num", r: "feature" }, { n: "Anno", t: "num", r: "feature" }, { n: "Origine", t: "cat", r: "ignora" }, { n: "km/litro", t: "num", r: "target", key: "kml" }, { n: "Consumo", t: "cat", r: "ignora", from: "kml" } ], rows: AUTO },
+    iris: { note: "Nove fiori dal celebre dataset <i>iris</i> (150 fiori in tutto, misurati da R. Fisher nel 1936). Lunghezze e larghezze in centimetri.", full: "150",
+      cols: [ { n: "Sepalo, lungh.", t: "num", r: "feature" }, { n: "Sepalo, largh.", t: "num", r: "feature" }, { n: "Petalo, lungh.", t: "num", r: "feature" }, { n: "Petalo, largh.", t: "num", r: "feature" }, { n: "Specie", t: "cat", r: "target" } ], rows: IRIS },
+    stud: { note: "<b>Dati inventati</b> per l’esempio: otto studenti di una classe immaginaria. «Promosso» è sì se il voto finale è almeno 6.", full: "",
+      cols: [ { n: "Nome", t: "cat", id: 1, r: "ignora" }, { n: "Ore di studio", t: "num", r: "feature" }, { n: "Assenze", t: "num", r: "feature" }, { n: "Voto precedente", t: "num", r: "feature" }, { n: "Voto finale", t: "num", r: "target", key: "fin" }, { n: "Promosso", t: "cat", r: "ignora", from: "fin" } ],
+      rows: [ ["Anna", 8, 2, 7, 7.5, "sì"], ["Bruno", 2, 9, 5, 4.5, "no"], ["Carla", 6, 3, 6, 6.5, "sì"], ["Dario", 1, 12, 4, 4, "no"], ["Elena", 10, 1, 8, 8.5, "sì"], ["Fabio", 4, 6, 5, 5.5, "no"], ["Giulia", 7, 4, 6, 7, "sì"], ["Luca", 3, 8, 5, 5, "no"] ] }
+  };
+  var ds = "auto", selRow = 0;
+  function cols() { return DS[ds].cols; }
+  function setRole(i, r) {
+    var C = cols(); if (r === "target") C.forEach(function (c) { if (c.r === "target") c.r = "feature"; }); C[i].r = r;
+  }
+  function resetRoles() { DS.auto.cols.forEach(function (c, i) { c.r = ["ignora", "feature", "feature", "feature", "ignora", "target", "ignora"][i]; }); DS.iris.cols.forEach(function (c, i) { c.r = i < 4 ? "feature" : "target"; }); DS.stud.cols.forEach(function (c, i) { c.r = ["ignora", "feature", "feature", "feature", "target", "ignora"][i]; }); }
+  var RN = { feature: "feature", target: "target · etichetta", ignora: "ignorata" };
+  function fmtCell(v) { return typeof v === "number" ? String(v).replace(".", ",") : esc(v); }
+  function drawTable() {
+    var D = DS[ds], C = D.cols, h = "<thead><tr>";
+    C.forEach(function (c, i) { h += "<th class='r-" + c.r + (c.t === "cat" ? " l" : "") + "' tabindex='0' data-c='" + i + "' title='Clicca per cambiare il ruolo'><span class='cn'>" + esc(c.n) + "</span><span class='ty'>" + (c.t === "num" ? "numero" : "categoria") + "</span><span class='rl'>" + RN[c.r] + "</span></th>"; });
+    h += "</tr></thead><tbody>";
+    D.rows.forEach(function (r, ri) { h += "<tr data-r='" + ri + "'" + (ri === selRow ? " class='sel'" : "") + ">"; r.forEach(function (v, i) { h += "<td class='r-" + C[i].r + (C[i].t === "cat" ? " l" : "") + "'>" + fmtCell(v) + "</td>"; }); h += "</tr>"; });
+    $("tbl").innerHTML = h + "</tbody>";
+    $("dNote").innerHTML = D.note;
+    Array.prototype.forEach.call($("tbl").querySelectorAll("th"), function (th) {
+      var go = function () { var i = +th.getAttribute("data-c"), c = cols()[i], nx = { feature: "target", target: "ignora", ignora: "feature" }[c.r]; setRole(i, nx); drawTable(); summary(); };
+      th.onclick = go; th.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    });
+    Array.prototype.forEach.call($("tbl").querySelectorAll("tbody tr"), function (tr) { tr.onclick = function () { selRow = +tr.getAttribute("data-r"); drawTable(); summary(); }; });
+  }
+  function summary() {
+    var D = DS[ds], C = D.cols, F = [], T = null;
+    C.forEach(function (c, i) { if (c.r === "feature") F.push(i); else if (c.r === "target") T = i; });
+    var n = D.rows.length, p = F.length, h = "";
+    h += "<p><b>Sample</b> (righe): <span class='big'>n = " + n + "</span>" + (D.full ? " <span class='hint'>(qui ne vedi " + n + " su " + D.full + ")</span>" : "") + "<br><b>Feature</b> (colonne usate per prevedere): <span class='big'>p = " + p + "</span><br><b>Target</b>: ";
+    if (T === null) h += "<span class='big'>nessuno</span></p><p>Senza una colonna da prevedere non ci sono risposte note da cui imparare: non c’è <b>apprendimento supervisionato</b>. Si potrebbero solo cercare <b>gruppi</b> di righe simili (apprendimento <b>non supervisionato</b>, vedi la scheda 2).</p>";
+    else {
+      var tc = C[T], reg = tc.t === "num";
+      h += "<span class='big'>" + esc(tc.n) + "</span> (" + (reg ? "numero" : "categoria") + ")</p>";
+      h += "<p>I dati hanno la risposta, quindi è <b>apprendimento supervisionato</b>.</p><p>Il target è " + (reg ? "un <b>numero</b>" : "una <b>categoria</b>") + ": è un problema di <span class='big'>" + (reg ? "regressione" : "classificazione") + "</span>.</p>";
+      h += "<p>In forma matriciale: <b>X</b> è una matrice <b>" + n + " × " + p + "</b> (righe = esempi, colonne = feature) e <b>y</b> è un vettore con <b>" + n + "</b> elementi.</p>";
+    }
+    $("sumT").innerHTML = h;
+    // riga come vettore
+    var r = D.rows[selRow], xs = [], cat = [];
+    F.forEach(function (i) { if (C[i].t === "num") xs.push(String(r[i]).replace(".", ",")); else cat.push(C[i].n + " = " + r[i]); });
+    var rh = "<p>Riga <b>" + (selRow + 1) + "</b>: la descrizione di un solo esempio.</p><div class='vec'>x<sup>(" + (selRow + 1) + ")</sup> = (" + (xs.length ? xs.join(", ") : "…") + ")</div>";
+    if (cat.length) rh += "<p class='hint'>Le feature in forma di categoria (" + esc(cat.join("; ")) + ") vanno prima <b>trasformate in numeri</b>.</p>";
+    if (T !== null) rh += "<div class='vec'>y<sup>(" + (selRow + 1) + ")</sup> = " + String(r[T]).replace(".", ",") + "</div>";
+    $("rowT").innerHTML = rh;
+    // avvisi
+    var w = "";
+    F.forEach(function (i) { if (C[i].id) w += "<div class='warn'><b>«" + esc(C[i].n) + "»</b> è un identificativo: dice <i>chi</i> è l’esempio, non <i>com’è</i>. Non va usato come feature (rimettilo tra le ignorate).</div>"; });
+    C.forEach(function (c, i) {
+      if (!c.from || c.r === "ignora") return;
+      var j = -1; C.forEach(function (d, k) { if (d.key === c.from) j = k; });
+      if (j < 0 || C[j].r === "ignora") return;
+      if (c.r === "target" || C[j].r === "target") w += "<div class='warn'><b>Attenzione, il modello «bara».</b> «" + esc(c.n) + "» è ricavato da «" + esc(C[j].n) + "»: se una delle due è il target e l’altra è una feature, la risposta è già nei dati. In pratica servirebbe solo una delle due colonne: ignora l’altra.</div>";
+    });
+    if (!w && T !== null && p > 0) w = "<div class='warn good'>Scelta sensata: le feature descrivono l’esempio e il target è la risposta che vorremmo conoscere in anticipo.</div>";
+    $("warnP").innerHTML = w;
+  }
+  $("dSel").onchange = function () { ds = $("dSel").value; selRow = 0; resetRoles(); drawTable(); summary(); };
+  Array.prototype.forEach.call(document.querySelectorAll(".terms .t"), function (el) {
+    var on = function () { var k = el.getAttribute("data-hl"); $("tbl").className = "dt hl-" + k; }, off = function () { $("tbl").className = "dt"; };
+    el.onmouseenter = on; el.onmouseleave = off; el.onfocus = on; el.onblur = off; el.onclick = on;
+  });
+
+  /* ---------- helper grafici ---------- */
+  function setup(cv, xr, yr, xl, yl) {
+    var c = cv.getContext("2d"), W = cv.width, H = cv.height, L = 58, R = 16, T = 14, B = 46;
+    c.clearRect(0, 0, W, H); c.fillStyle = "#fff"; c.fillRect(0, 0, W, H);
+    var X = function (v) { return L + (v - xr[0]) / (xr[1] - xr[0]) * (W - L - R); }, Y = function (v) { return H - B - (v - yr[0]) / (yr[1] - yr[0]) * (H - B - T); };
+    c.strokeStyle = "#e3e8e8"; c.fillStyle = "#566074"; c.font = "13px system-ui,sans-serif"; c.lineWidth = 1;
+    var i, st;
+    st = niceStep(xr[1] - xr[0]); c.textAlign = "center";
+    for (i = Math.ceil(xr[0] / st) * st; i <= xr[1]; i += st) { c.beginPath(); c.moveTo(X(i), T); c.lineTo(X(i), H - B); c.stroke(); c.fillText(String(Math.round(i * 100) / 100).replace(".", ","), X(i), H - B + 17); }
+    st = niceStep(yr[1] - yr[0]); c.textAlign = "right";
+    for (i = Math.ceil(yr[0] / st) * st; i <= yr[1]; i += st) { c.beginPath(); c.moveTo(L, Y(i)); c.lineTo(W - R, Y(i)); c.stroke(); c.fillText(String(Math.round(i * 100) / 100).replace(".", ","), L - 6, Y(i) + 4); }
+    c.strokeStyle = "#8a929b"; c.beginPath(); c.moveTo(L, T); c.lineTo(L, H - B); c.lineTo(W - R, H - B); c.stroke();
+    c.fillStyle = "#1d2433"; c.textAlign = "center"; c.fillText(xl, (L + W - R) / 2, H - 6);
+    c.save(); c.translate(15, (T + H - B) / 2); c.rotate(-Math.PI / 2); c.fillText(yl, 0, 0); c.restore();
+    return { c: c, X: X, Y: Y, W: W, H: H, L: L, R: R, T: T, B: B, inv: function (px) { return xr[0] + (px - L) / (W - L - R) * (xr[1] - xr[0]); }, invY: function (py) { return yr[0] + (H - B - py) / (H - B - T) * (yr[1] - yr[0]); } };
+  }
+  function niceStep(span) { var r = span / 6, p = Math.pow(10, Math.floor(Math.log(r) / Math.LN10)), m = r / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+  function dot(c, x, y, col, rad, shape) {
+    c.fillStyle = col; c.strokeStyle = "#fff"; c.lineWidth = 1.5; c.beginPath();
+    if (shape === "sq") { c.rect(x - rad, y - rad, 2 * rad, 2 * rad); } else if (shape === "di") { c.moveTo(x, y - rad * 1.3); c.lineTo(x + rad * 1.3, y); c.lineTo(x, y + rad * 1.3); c.lineTo(x - rad * 1.3, y); c.closePath(); } else if (shape === "tr") { c.moveTo(x, y - rad * 1.2); c.lineTo(x + rad * 1.2, y + rad); c.lineTo(x - rad * 1.2, y + rad); c.closePath(); } else c.arc(x, y, rad, 0, 7);
+    c.fill(); c.stroke();
+  }
+  function star(c, x, y, r, col) {
+    c.fillStyle = col; c.strokeStyle = "#fff"; c.lineWidth = 2; c.beginPath();
+    for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; c[i ? "lineTo" : "moveTo"](x + rr * Math.cos(a), y + rr * Math.sin(a)); }
+    c.closePath(); c.fill(); c.stroke();
+  }
+
+  /* ---------- 2 · con o senza etichette ---------- */
+  var XR2 = [650, 2450], YR2 = [30, 240];
+  var mw = 0, mh = 0, sw = 0, sh = 0;
+  CARS.forEach(function (c) { mw += c.w; mh += c.h; }); mw /= CARS.length; mh /= CARS.length;
+  CARS.forEach(function (c) { sw += Math.pow(c.w - mw, 2); sh += Math.pow(c.h - mh, 2); }); sw = Math.sqrt(sw / CARS.length); sh = Math.sqrt(sh / CARS.length);
+  function zz(w, h) { return [(w - mw) / sw, (h - mh) / sh]; }
+  function knnPred(q, k, skip) {
+    var z = zz(q.w, q.h), ds2 = [];
+    CARS.forEach(function (c, i) { if (i === skip) return; var a = zz(c.w, c.h); ds2.push({ d: Math.hypot(a[0] - z[0], a[1] - z[1]), o: c.o, i: i }); });
+    ds2.sort(function (a, b) { return a.d - b.d; }); var nb = ds2.slice(0, k), v = {}; nb.forEach(function (x) { v[x.o] = (v[x.o] || 0) + 1; });
+    var best = null; Object.keys(v).forEach(function (o) { if (best === null || v[o] > v[best]) best = o; });
+    return { cls: best, votes: v, nb: nb };
+  }
+  var loo = 0; CARS.forEach(function (c, i) { if (knnPred(c, 5, i).cls === c.o) loo++; }); loo /= CARS.length;
+  var S2 = { mode: "sup", q: null, cl: null };
+  function kmeans(K) {
+    var Z = CARS.map(function (c) { return zz(c.w, c.h); }), cen = [Z[0].slice()], i, k;
+    while (cen.length < K) { var bi = 0, bd = -1; Z.forEach(function (z, j) { var d = Math.min.apply(null, cen.map(function (c) { return Math.hypot(z[0] - c[0], z[1] - c[1]); })); if (d > bd) { bd = d; bi = j; } }); cen.push(Z[bi].slice()); }
+    var as = [];
+    for (var it = 0; it < 60; it++) {
+      as = Z.map(function (z) { var b = 0, bd2 = 1e9; cen.forEach(function (c, j) { var d = Math.hypot(z[0] - c[0], z[1] - c[1]); if (d < bd2) { bd2 = d; b = j; } }); return b; });
+      var nc = cen.map(function (c, j) { var s = [0, 0, 0]; Z.forEach(function (z, m) { if (as[m] === j) { s[0] += z[0]; s[1] += z[1]; s[2]++; } }); return s[2] ? [s[0] / s[2], s[1] / s[2]] : c; });
+      var mv = 0; nc.forEach(function (c, j) { mv += Math.hypot(c[0] - cen[j][0], c[1] - cen[j][1]); }); cen = nc; if (mv < 1e-9) break;
+    }
+    // ordina i gruppi per peso medio
+    var ord = cen.map(function (c, j) { return { j: j, w: c[0] }; }).sort(function (a, b) { return a.w - b.w; }), map = {}; ord.forEach(function (o, r) { map[o.j] = r; });
+    return as.map(function (a) { return map[a]; });
+  }
+  var SH = ["sq", "di", "tr"], CC = ["#6a3d9a", "#b8860b", "#0b7a8f"];
+  function draw2() {
+    var g = setup($("cv2"), XR2, YR2, "peso (kg)", "potenza (cavalli)"), c = g.c;
+    CARS.forEach(function (d, i) {
+      if (S2.mode === "sup") dot(c, g.X(d.w), g.Y(d.h), COL[d.o], 6);
+      else if (S2.cl) dot(c, g.X(d.w), g.Y(d.h), CC[S2.cl[i]], 6, SH[S2.cl[i]]);
+      else dot(c, g.X(d.w), g.Y(d.h), "#8a929b", 6);
+    });
+    var t = "", hh = "";
+    if (S2.mode === "sup") {
+      if (S2.q) {
+        var p = knnPred(S2.q, 5, -1); p.nb.forEach(function (x) { c.strokeStyle = COL[CARS[x.i].o]; c.lineWidth = 2; c.beginPath(); c.moveTo(g.X(S2.q.w), g.Y(S2.q.h)); c.lineTo(g.X(CARS[x.i].w), g.Y(CARS[x.i].h)); c.stroke(); });
+        star(c, g.X(S2.q.w), g.Y(S2.q.h), 13, "#1d2433");
+        t += "<p>Auto nuova: <b>" + Math.round(S2.q.w) + " kg, " + Math.round(S2.q.h) + " cavalli</b>.</p><p>Tra le 5 auto più simili: " + Object.keys(p.votes).map(function (o) { return "<b>" + p.votes[o] + "</b> " + o; }).join(", ") + ".</p><p>Previsione: origine <span class='big' style='color:" + COL[p.cls] + "'>" + p.cls + "</span>.</p>";
+      } else t += "<p><b>Clicca sul piano</b> per aggiungere un’auto nuova (★): il modello <b>indovina l’origine</b> guardando le 5 auto più simili.</p>";
+      t += "<p>Ogni punto ha una <b>etichetta</b> (l’origine: <span class='sw' style='background:" + COL.USA + "'></span>USA, <span class='sw' style='background:" + COL.Europa + "'></span>Europa, <span class='sw' style='background:" + COL.Giappone + "'></span>Giappone). Con le etichette il modello può <b>imparare dagli esempi</b> e poi <b>prevedere l’etichetta</b> di un’auto nuova: è <b>apprendimento supervisionato</b>.</p><p class='hint'>Prova: togliendo un’auto per volta e prevedendola con le altre, l’origine è indovinata nel <b>" + pc(loo) + "</b> dei casi (tirando a caso: circa 33 %).</p>";
+      hh = "Ogni colore è un’etichetta. ★ = auto nuova da classificare.";
+    } else {
+      if (!S2.cl) t += "<p>I punti sono grigi: <b>nessuna etichetta</b>. Non c’è una risposta giusta da imparare, ma si possono comunque cercare <b>gruppi di auto simili</b>.</p><p>Premi <b>«Cerca 3 gruppi»</b>.</p>";
+      else {
+        var cnt = [0, 1, 2].map(function () { return { USA: 0, Europa: 0, Giappone: 0, n: 0 }; }); CARS.forEach(function (d, i) { cnt[S2.cl[i]][d.o]++; cnt[S2.cl[i]].n++; });
+        t += "<p>L’algoritmo (<b>k-means</b>) ha trovato 3 gruppi di auto simili per peso e potenza. Ma i gruppi <b>non hanno un nome</b>: sono solo forme e colori. Per dare un significato serve una persona.</p><ul style='margin:6px 0;padding-left:1.2em'>";
+        cnt.forEach(function (x, j) { t += "<li><span style='color:" + CC[j] + ";font-weight:700'>" + ["■ gruppo A", "◆ gruppo B", "▲ gruppo C"][j] + "</span>: " + x.n + " auto (" + ["USA", "Europa", "Giappone"].map(function (o) { return x[o] + " " + o; }).join(", ") + ")</li>"; });
+        t += "</ul><p>I gruppi seguono l’origine solo in parte: sono formati dalla <b>somiglianza</b> di peso e potenza, non dall’etichetta. È <b>apprendimento non supervisionato</b>.</p>";
+      }
+      hh = "Senza etichette: i punti sono tutti uguali, finché un algoritmo non li raggruppa.";
+    }
+    $("o2t").innerHTML = t; $("h2").innerHTML = hh;
+    S2.g = g;
+  }
+  $("cv2").addEventListener("click", function (e) {
+    if (S2.mode !== "sup" || !S2.g) return; var r = $("cv2").getBoundingClientRect(), sx = $("cv2").width / r.width, px = (e.clientX - r.left) * sx, py = (e.clientY - r.top) * sx;
+    S2.q = { w: Math.max(XR2[0], Math.min(XR2[1], S2.g.inv(px))), h: Math.max(YR2[0], Math.min(YR2[1], S2.g.invY(py))) }; draw2();
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=m2]"), function (r) { r.onchange = function () { S2.mode = r.value; S2.cl = null; $("r2u").hidden = (S2.mode !== "uns"); draw2(); }; });
+  $("b2k").onclick = function () { S2.cl = kmeans(3); draw2(); };
+  $("b2r").onclick = function () { S2.cl = null; draw2(); };
+  function setMode2(m) { var r = document.querySelector("input[name=m2][value=" + m + "]"); r.checked = true; S2.mode = m; S2.cl = null; $("r2u").hidden = (m !== "uns"); draw2(); }
+
+  /* ---------- 3 · programmare o imparare ---------- */
+  function sub3() { var g = $("s3").value; return CARS.filter(function (c) { return g === "all" || c.o === g; }); }
+  function acc(S, T) { var ok = 0; S.forEach(function (c) { if ((c.w > T ? "alto" : "basso") === lab(c)) ok++; }); return ok; }
+  function bestT(S) {
+    var ws = S.map(function (c) { return c.w; }).sort(function (a, b) { return a - b; }), best = -1, bt = 1500;
+    for (var i = 0; i < ws.length - 1; i++) { var t = (ws[i] + ws[i + 1]) / 2, a = acc(S, t); if (a > best) { best = a; bt = t; } }
+    return { t: Math.round(bt / 10) * 10, a: acc(S, Math.round(bt / 10) * 10) };
+  }
+  var learned = false;
+  function upd3() {
+    var S = sub3(), T = +$("t3").value, g = setup($("cv3"), [650, 2450], [0, 24], "peso (kg)", "km con un litro"), c = g.c;
+    c.fillStyle = "rgba(192,97,27,.08)"; c.fillRect(g.X(T), g.T, g.W - g.R - g.X(T), g.H - g.B - g.T); c.fillStyle = "rgba(15,110,110,.08)"; c.fillRect(g.L, g.T, g.X(T) - g.L, g.H - g.B - g.T);
+    c.strokeStyle = "#8a929b"; c.setLineDash([6, 5]); c.lineWidth = 1.5; c.beginPath(); c.moveTo(g.L, g.Y(MEANK)); c.lineTo(g.W - g.R, g.Y(MEANK)); c.stroke(); c.setLineDash([]);
+    c.strokeStyle = "#1d2433"; c.lineWidth = 3; c.beginPath(); c.moveTo(g.X(T), g.T); c.lineTo(g.X(T), g.H - g.B); c.stroke();
+    S.forEach(function (d) { var wrong = (d.w > T ? "alto" : "basso") !== lab(d); dot(c, g.X(d.w), g.Y(d.k), COL[lab(d)], 6); if (wrong) { c.strokeStyle = "#B3261E"; c.lineWidth = 2.5; c.beginPath(); c.arc(g.X(d.w), g.Y(d.k), 11, 0, 7); c.stroke(); } });
+    var a = acc(S, T), n = S.length, b = bestT(S), t = "<p><b>Regola</b>: se il peso è maggiore di <b>" + T + " kg</b> → «consuma tanto», altrimenti → «consuma poco».</p><p>Su queste <b>" + n + "</b> auto la regola ha ragione <span class='big'>" + a + " volte su " + n + "</span> (" + pc(a / n) + ").</p>";
+    if (learned) t += "<p>Il computer ha provato tutte le soglie possibili sulle etichette e ha scelto <b>" + b.t + " kg</b>: " + b.a + " su " + n + " (" + pc(b.a / n) + "). <b>La regola è uscita dai dati</b>: con un altro gruppo di auto uscirebbe un’altra soglia.</p>";
+    else t += "<p class='hint'>Prova a spostare la soglia a mano, poi chiedi al computer di cercarla.</p>";
+    $("o3t").innerHTML = t; $("t3v").textContent = T + " kg";
+  }
+  $("t3").oninput = function () { learned = false; upd3(); };
+  $("s3").onchange = function () { upd3(); };
+  $("b3").onclick = function () { var b = bestT(sub3()); $("t3").value = b.t; learned = true; upd3(); };
+
+  /* ---------- 4 · regressione o classificazione ---------- */
+  var fit = (function () {
+    var n = CARS.length, mx = 0, my = 0, i; CARS.forEach(function (c) { mx += c.w; my += c.k; }); mx /= n; my /= n;
+    var sxy = 0, sxx = 0, syy = 0; CARS.forEach(function (c) { sxy += (c.w - mx) * (c.k - my); sxx += Math.pow(c.w - mx, 2); syy += Math.pow(c.k - my, 2); });
+    var b = sxy / sxx, a = my - b * mx, mae = 0, sse = 0; CARS.forEach(function (c) { var e = c.k - (a + b * c.w); mae += Math.abs(e); sse += e * e; }); return { a: a, b: b, mae: mae / n, r2: 1 - sse / syy };
+  })();
+  var bestAll = bestT(CARS);
+  function upd4() {
+    var mode = document.querySelector("input[name=g4]:checked").value, W = +$("w4").value, g = setup($("cv4"), [650, 2450], [0, 24], "peso (kg)", "km con un litro"), c = g.c, t = "", hh = "";
+    $("w4v").textContent = W + " kg";
+    if (mode === "num") {
+      CARS.forEach(function (d) { dot(c, g.X(d.w), g.Y(d.k), "#4a6fa5", 5.5); });
+      c.strokeStyle = "#C0611B"; c.lineWidth = 3; c.beginPath(); c.moveTo(g.X(650), g.Y(fit.a + fit.b * 650)); c.lineTo(g.X(2450), g.Y(fit.a + fit.b * 2450)); c.stroke();
+      var y = fit.a + fit.b * W; c.setLineDash([5, 4]); c.strokeStyle = "#1d2433"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(g.X(W), g.H - g.B); c.lineTo(g.X(W), g.Y(y)); c.lineTo(g.L, g.Y(y)); c.stroke(); c.setLineDash([]); star(c, g.X(W), g.Y(y), 13, "#1d2433");
+      t = "<p>Target: <b>km con un litro</b> (un numero).</p><p>Per un’auto di <b>" + W + " kg</b> il modello risponde con un <b>valore</b>: <span class='big'>" + f1(y) + " km/litro</span>.</p><p>Il modello sbaglia in media di <b>" + f1(fit.mae) + " km/litro</b> (MAE) e spiega il <b>" + pc(fit.r2) + "</b> della variabilità (R²). L’errore è una <b>distanza</b>: si può sbagliare di poco o di molto.</p>";
+      hh = "<span class='sw' style='background:#4a6fa5'></span>auto &nbsp; linea arancione = il modello (una retta). ★ = previsione.";
+    } else {
+      var T = bestAll.t, tp = 0, tn = 0, fp = 0, fn = 0;
+      CARS.forEach(function (d) { var pr = d.w > T ? "alto" : "basso"; dot(c, g.X(d.w), g.Y(d.k), COL[lab(d)], 5.5); if (pr === "alto" && lab(d) === "alto") tp++; else if (pr === "basso" && lab(d) === "basso") tn++; else if (pr === "alto") fp++; else fn++; });
+      c.fillStyle = "rgba(192,97,27,.08)"; c.fillRect(g.X(T), g.T, g.W - g.R - g.X(T), g.H - g.B - g.T); c.fillStyle = "rgba(15,110,110,.08)"; c.fillRect(g.L, g.T, g.X(T) - g.L, g.H - g.B - g.T);
+      CARS.forEach(function (d) { dot(c, g.X(d.w), g.Y(d.k), COL[lab(d)], 5.5); });
+      c.strokeStyle = "#1d2433"; c.lineWidth = 3; c.beginPath(); c.moveTo(g.X(T), g.T); c.lineTo(g.X(T), g.H - g.B); c.stroke();
+      c.strokeStyle = "#1d2433"; c.lineWidth = 2; c.setLineDash([5, 4]); c.beginPath(); c.moveTo(g.X(W), g.T); c.lineTo(g.X(W), g.H - g.B); c.stroke(); c.setLineDash([]); star(c, g.X(W), g.Y(2), 13, "#1d2433");
+      var cl = W > T ? "alto" : "basso", n = CARS.length;
+      t = "<p>Target: <b>consuma tanto / poco</b> (una categoria; «tanto» = sotto 9,97 km/litro).</p><p>Per un’auto di <b>" + W + " kg</b> il modello risponde con una <b>classe</b>: <span class='big' style='color:" + COL[cl] + "'>consuma " + (cl === "alto" ? "tanto" : "poco") + "</span>.</p><p>Soglia scelta: <b>" + T + " kg</b>. Accuratezza: <b>" + (tp + tn) + " su " + n + "</b> (" + pc((tp + tn) / n) + "). L’errore non ha «distanza»: la risposta è giusta o sbagliata, e gli sbagli sono di due tipi:</p>" +
+        "<table class='cm'><tr><th></th><th>previsto «tanto»</th><th>previsto «poco»</th></tr><tr><th>vero «tanto»</th><td>" + tp + "</td><td>" + fn + " <span class='hint'>falsi negativi</span></td></tr><tr><th>vero «poco»</th><td>" + fp + " <span class='hint'>falsi positivi</span></td><td>" + tn + "</td></tr></table>";
+      hh = "<span class='sw' style='background:#C0611B'></span>consuma tanto &nbsp; <span class='sw' style='background:#0F6E6E'></span>consuma poco &nbsp; linea piena = confine di decisione. ★ = auto nuova.";
+    }
+    $("o4t").innerHTML = t; $("h4").innerHTML = hh;
+  }
+  $("w4").oninput = upd4;
+  Array.prototype.forEach.call(document.querySelectorAll("input[name=g4]"), function (r) { r.onchange = upd4; });
+  function setv(id, v) { var e = $(id); e.value = v; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); }
+  function setMode4(m) { document.querySelector("input[name=g4][value=" + m + "]").checked = true; upd4(); }
+
+  /* ---------- esperienze guidate ---------- */
+  function sel() { return Array.prototype.slice.call(arguments); }
+  function init1(d) { tab(1); $("dSel").value = d || "auto"; ds = d || "auto"; selRow = 0; resetRoles(); drawTable(); summary(); $("tbl").className = "dt"; }
+  function roleBy(name, r) { var C = cols(); for (var i = 0; i < C.length; i++) if (C[i].n === name) setRole(i, r); drawTable(); summary(); }
+  var EXPS = [
+    { id: "d1", title: "Righe, colonne ed etichetta", time: "6 min", desc: "Sample, feature e target in una tabella di automobili; che problema è?", steps: [
+      { t: "Una tabella di dati", x: "Ecco un <b>dataset</b>: una tabella di automobili vere. Non è un disegno: ogni numero è stato misurato. È il punto di partenza di ogni problema di machine learning.", el: "#tbl", apply: function () { init1("auto"); } },
+      { t: "Ogni riga è un sample", x: "Ogni <b>riga</b> è un <b>sample</b> (esempio, osservazione): una sola automobile. Clicca su una riga: a destra compare come <b>vettore</b> x di numeri.", el: sel("#tbl", "#rowP"), btn: "Scegli la riga 3", apply: function () { selRow = 2; drawTable(); summary(); $("tbl").className = "dt hl-row"; } },
+      { t: "Le colonne azzurre: le feature", x: "Peso, cavalli e anno sono le <b>feature</b>: le caratteristiche che descrivono ogni auto e che conosciamo <b>in anticipo</b>. Servono per prevedere.", el: "#tbl", apply: function () { $("tbl").className = "dt hl-feat"; } },
+      { t: "La colonna arancione: il target", x: "I <b>km con un litro</b> sono il <b>target</b> (o <b>etichetta</b>): la risposta che vorremmo prevedere. Nei dati di partenza la conosciamo: per questo si parla di <b>apprendimento supervisionato</b>.", el: "#tbl", apply: function () { $("tbl").className = "dt hl-tgt"; } },
+      { t: "Che problema è?", x: "Il riquadro a destra riassume: <b>n</b> esempi, <b>p</b> feature, e una matrice <b>X (n × p)</b> più un vettore <b>y</b>. Il target è un <b>numero</b>, quindi è un problema di <b>regressione</b>.", el: "#sumP", apply: function () { $("tbl").className = "dt"; } },
+      { t: "Cambia il target", x: "Se invece la colonna da prevedere fosse l’<b>origine</b> (USA, Europa, Giappone)? Ora il target è una <b>categoria</b> e il problema diventa di <b>classificazione</b>. Le stesse righe, un altro problema.", el: sel("#tbl", "#sumP"), btn: "Origine come target", apply: function () { roleBy("Origine", "target"); roleBy("km/litro", "feature"); } },
+      { t: "Occhio alle colonne «sospette»", x: "Rimetti il <b>Modello</b> (il nome dell’auto) tra le feature: compare un avviso. Un <b>identificativo</b> non descrive com’è l’esempio e non serve a prevedere. E guarda «Consumo»: è <b>ricavato</b> dai km/litro, quindi usarlo insieme a loro fa «barare» il modello.", el: "#warnP", btn: "Metti il Modello tra le feature", apply: function () { roleBy("Modello", "feature"); } }
+    ] },
+    { id: "d2", title: "Con o senza etichette", time: "6 min", desc: "Supervisionato: indovinare l’etichetta. Non supervisionato: cercare gruppi.", steps: [
+      { t: "Punti con un’etichetta", x: "Sessanta auto, ognuna con peso, potenza e <b>origine</b> (il colore). L’origine è l’<b>etichetta</b>: è una risposta nota.", el: "#cv2", apply: function () { tab(2); setMode2("sup"); S2.q = null; draw2(); } },
+      { t: "Prevedere l’etichetta", x: "Clicca sul piano: la stella ★ è un’auto <b>nuova</b>, senza etichetta. Il modello guarda le 5 auto più simili e <b>indovina l’origine</b>. Imparare da esempi con la risposta e prevedere la risposta di un esempio nuovo: <b>apprendimento supervisionato</b>.", el: sel("#cv2", "#o2"), btn: "Metti un’auto leggera e potente", apply: function () { S2.q = { w: 1000, h: 80 }; draw2(); } },
+      { t: "Togliamo le etichette", x: "Passa a <b>«No»</b>: ora i punti sono tutti uguali. Non c’è nessuna risposta da imparare, quindi non si può «prevedere» un’etichetta.", el: "#opt2", btn: "Senza etichette", apply: function () { setMode2("uns"); } },
+      { t: "Cercare gruppi", x: "Si può comunque chiedere all’algoritmo di <b>raggruppare</b> le auto simili. Premi <b>«Cerca 3 gruppi»</b>: compaiono tre forme. Ma i gruppi <b>non hanno un nome</b>, e non coincidono per forza con l’origine. È <b>apprendimento non supervisionato</b>.", el: sel("#cv2", "#o2"), btn: "Cerca 3 gruppi", apply: function () { S2.cl = kmeans(3); draw2(); } }
+    ] },
+    { id: "d3", title: "Regole scritte o imparate", time: "6 min", desc: "Programmazione tradizionale contro machine learning, con una soglia sul peso.", steps: [
+      { t: "Due modi di arrivare a una regola", x: "Nella programmazione <b>tradizionale</b> si danno al computer <b>dati e regole</b> e si ottengono risposte. Nel machine learning si danno <b>dati e risposte</b> (etichette) e il computer ricava le <b>regole</b>.", el: "#flow", apply: function () { tab(3); $("s3").value = "all"; learned = false; $("t3").value = 1500; upd3(); } },
+      { t: "Una regola scritta a mano", x: "Regola scritta da una persona: «se un’auto pesa più di 1500 kg, consuma tanto». I cerchi rossi sono le auto per cui la regola <b>sbaglia</b>. Sposta la soglia: riesci a fare meglio?", el: sel("#cv3", "#r3"), btn: "Soglia a 1300 kg", apply: function () { setv("t3", 1300); } },
+      { t: "Lascia imparare al computer", x: "Premi il pulsante: il computer prova <b>tutte</b> le soglie e tiene quella che sbaglia meno <b>sulle etichette</b>. La regola «esce dai dati»: nessuno l’ha scritta.", el: sel("#r3", "#o3"), btn: "Impara la soglia", apply: function () { $("b3").click(); } },
+      { t: "Altri dati, altra regola", x: "Scegli le sole auto <b>giapponesi</b>: la soglia imparata cambia, perché i dati sono diversi. Una regola scritta a mano resterebbe quella di prima; l’algoritmo la <b>ricalcola</b>.", el: sel("#d3", "#o3"), btn: "Solo giapponesi", apply: function () { $("s3").value = "Giappone"; $("b3").click(); } }
+    ] },
+    { id: "d4", title: "Numero o categoria?", time: "6 min", desc: "Le stesse feature, due target diversi: regressione o classificazione.", steps: [
+      { t: "Prevedere un numero", x: "Qui la feature è il <b>peso</b> e il target i <b>km con un litro</b>: un <b>numero</b>. La retta arancione è il modello di <b>regressione</b>: risponde con un valore.", el: sel("#cv4", "#o4"), apply: function () { tab(4); setMode4("num"); setv("w4", 1300); } },
+      { t: "L’errore ha una distanza", x: "Sposta il peso: la risposta cambia con continuità. Un errore è la <b>distanza</b> tra il valore previsto e quello vero, e si misura con MAE, RMSE, R².", el: sel("#x4", "#o4"), btn: "Peso 1900 kg", apply: function () { setv("w4", 1900); } },
+      { t: "Cambia il target", x: "Ora la colonna da prevedere è «consuma tanto o poco»: una <b>categoria</b>. Le feature non sono cambiate. Il modello disegna un <b>confine</b> e risponde con una <b>classe</b>.", el: sel("#m4", "#cv4"), btn: "Target: categoria", apply: function () { setMode4("cat"); } },
+      { t: "Giusto o sbagliato", x: "Un errore non ha distanza: la risposta è <b>giusta o sbagliata</b>, e si sbaglia in due modi (falsi positivi e falsi negativi), riassunti nella <b>matrice di confusione</b>. Si misura con accuratezza, precisione e richiamo.", el: "#o4", apply: function () { setv("w4", 1500); } },
+      { t: "Il confronto", x: "La tabella riassume la regola da ricordare: guarda il <b>target</b>. Numero → regressione. Categoria → classificazione. Nessun target → non supervisionato.", el: "#cmpP" }
+    ] }
+  ];
+  Tour.init(EXPS);
+  resetRoles(); drawTable(); summary(); draw2(); upd3(); upd4();
+  window.addEventListener("load", function () { draw2(); });
+})();
+</script>
+</body>
+</html>
