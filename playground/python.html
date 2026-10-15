@@ -2071,11 +2071,13 @@ if n % 2 == 1:
 else:
     mediana = (ordinate[n // 2 - 1] + ordinate[n // 2]) / 2
 print("mediana =", mediana)` },
-  { t: "text", h: `<p>La <b>varianza</b> è la media dei quadrati degli scarti dalla media, <i>σ</i>² = Σ(<i>x<sub>i</sub></i> − <i>μ</i>)² / <i>n</i>; la <b>deviazione standard</b> <i>σ</i> è la sua radice quadrata (si ottiene con <code>** 0.5</code>). Misura quanto i dati sono dispersi intorno alla media.</p>` },
+  { t: "text", h: `<p>La <b>varianza</b> è la media dei quadrati degli scarti dalla media, <i>σ</i>² = Σ(<i>x<sub>i</sub></i> − <i>μ</i>)² / <i>n</i>; la <b>deviazione standard</b> <i>σ</i> è la sua radice quadrata (si ottiene con <code>** 0.5</code>). Misura quanto i dati sono dispersi intorno alla media. Nel codice un ciclo <code>for</code> calcola il quadrato dello scarto di ogni misura e lo aggiunge a una lista.</p>` },
   { t: "cell", id: "8-3", code: C`misure = [12.1, 11.8, 12.4, 12.0, 11.9, 12.3]
 n = len(misure)
 media = sum(misure) / n
-scarti_quadrati = [(x - media) ** 2 for x in misure]
+scarti_quadrati = []
+for x in misure:
+    scarti_quadrati.append((x - media) ** 2)
 varianza = sum(scarti_quadrati) / n
 dev_std = varianza ** 0.5
 print("varianza =", varianza)
@@ -2089,7 +2091,10 @@ print(f"deviazione standard = {dev_std:.4f}")` },
         mediana = ordinate[n // 2]
     else:
         mediana = (ordinate[n // 2 - 1] + ordinate[n // 2]) / 2
-    varianza = sum((x - media) ** 2 for x in misure) / n
+    somma = 0
+    for x in misure:
+        somma = somma + (x - media) ** 2
+    varianza = somma / n
     return media, mediana, varianza ** 0.5
 
 m, med, s = statistiche([12.1, 11.8, 12.4, 12.0, 11.9, 12.3])
@@ -2123,10 +2128,13 @@ print("mediana con errore:", ordinate[len(ordinate) // 2])` },
     # restituisci la deviazione standard di v
     pass
 `,
-    hint: "Calcola la media <code>m = sum(v) / len(v)</code>, poi la varianza <code>sum((x - m) ** 2 for x in v) / len(v)</code> e infine la radice con <code>** 0.5</code>.",
+    hint: "Calcola la media <code>m = sum(v) / len(v)</code>, poi, con un ciclo <code>for</code>, la somma dei quadrati degli scarti (parti da <code>somma = 0</code> e aggiungi <code>(x - m) ** 2</code> per ogni <code>x</code>), la varianza dividendo per <code>len(v)</code> e infine la radice con <code>** 0.5</code>.",
     solution: C`def dev_std(v):
     m = sum(v) / len(v)
-    varianza = sum((x - m) ** 2 for x in v) / len(v)
+    somma = 0
+    for x in v:
+        somma = somma + (x - m) ** 2
+    varianza = somma / len(v)
     return varianza ** 0.5`,
     check: { k: "func", fn: "dev_std", tests: ["[2, 4, 4, 4, 5, 5, 7, 9]", "[1, 1, 1]", "[1, 2, 3, 4]", "[10]", "[12.1, 11.8, 12.4, 12.0, 11.9, 12.3]"] } }
   ] }
